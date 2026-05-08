@@ -19,8 +19,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 // Avatar
 // ======================
 
-function Avatar() {
-
+function Avatar({ vrmUrl }: { vrmUrl: string }) {
 const mouthState = useRef({
   speaking: false,
   value: 0,
@@ -43,7 +42,7 @@ useEffect(() => {
   const loader = new GLTFLoader();
   loader.register((parser) => new VRMLoaderPlugin(parser));
 
-  loader.load("/avatar.vrm", (gltf) => {
+  loader.load(vrmUrl, (gltf) => {
 
     const vrmModel = gltf.userData.vrm as VRM;
 
@@ -197,14 +196,20 @@ return (
 export default function Home() {
   const router = useRouter();
   const [session, setSession] = useState<any>(null);
-
+ const [vrmUrl, setVrmUrl] = useState('/avatar.vrm'); 
 useEffect(() => {
- const checkSession = async () => {
+const checkSession = async () => {
   const { data } = await supabase.auth.getSession();
   if (!data.session) {
     router.push("/login");
   } else {
     setSession(data.session);
+    const { data: customer } = await supabase
+      .from('customers')
+      .select('vrm_url')
+      .eq('email', data.session.user.email)
+      .single();
+    if (customer?.vrm_url) setVrmUrl(customer.vrm_url);
   }
 };
   checkSession();
@@ -324,7 +329,7 @@ const sendMessage = async (text: string) => {
       <Canvas camera={{ position: [0, 1.3, 1.5], fov: 35 }}>
         <ambientLight intensity={0.7} />
         <directionalLight position={[1, 2, 3]} />
-        <Avatar />
+        <Avatar vrmUrl={vrmUrl} />
         <OrbitControls target={[0, 1.2, 0]} />
       </Canvas>
     </div>
