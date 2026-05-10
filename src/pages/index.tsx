@@ -38,10 +38,9 @@ const blinkState = useRef({
 });
 
 useEffect(() => {
-
+if (!vrmUrl) return;
   const loader = new GLTFLoader();
   loader.register((parser) => new VRMLoaderPlugin(parser));
-
   loader.load(vrmUrl, (gltf) => {
 
     const vrmModel = gltf.userData.vrm as VRM;
@@ -57,7 +56,7 @@ useEffect(() => {
 
   (window as any).mouthState = mouthState;
 
-}, []);
+}, [vrmUrl]);
 
 
 useFrame((_, delta) => {
