@@ -1,11 +1,6 @@
 "use client";
 
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase } from "../lib/supabase";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { Canvas, useFrame } from "@react-three/fiber";
@@ -29,6 +24,7 @@ const mouthState = useRef({
 });
 
 const [vrm, setVrm] = useState<VRM | null>(null);
+const [loading, setLoading] = useState(true);  // ← 追加
 
 // 瞬き
 const blinkState = useRef({
@@ -38,13 +34,14 @@ const blinkState = useRef({
 });
 
 useEffect(() => {
-if (!vrmUrl) return;
+  if (!vrmUrl) return;
+  setLoading(true);  // ← 追加
   const loader = new GLTFLoader();
   loader.register((parser) => new VRMLoaderPlugin(parser));
   loader.load(vrmUrl, (gltf) => {
-
     const vrmModel = gltf.userData.vrm as VRM;
-
+    setVrm(vrmModel);
+    setLoading(false);  // ← ここに追加
     // モデル中央補正
     const box = new THREE.Box3().setFromObject(vrmModel.scene);
     const center = box.getCenter(new THREE.Vector3());
@@ -178,7 +175,7 @@ rightHand.rotation.z = -0.01;
   });
 
 if (!vrm) return null;
-
+if (loading) return <mesh><boxGeometry /><meshStandardMaterial color="gray" /></mesh>;
 return (
   <group position={[0, -1.6, 0]} scale={3}>
     <primitive object={vrm.scene} />
@@ -208,7 +205,8 @@ const checkSession = async () => {
       .select('vrm_url')
       .eq('email', data.session.user.email)
       .single();
-    if (customer?.vrm_url) setVrmUrl(customer.vrm_url);
+    console.log("vrm_url:", customer?.vrm_url);
+if (customer?.vrm_url) setVrmUrl(customer.vrm_url);
   }
 };
   checkSession();
