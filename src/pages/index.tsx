@@ -199,6 +199,11 @@ const checkSession = async () => {
   if (!data.session) {
     router.push("/login");
   } else {
+    // 管理者は管理画面に飛ばす
+    if (data.session.user.email === 'md26ssyt@gmail.com') {
+      router.push("/admin");
+      return;
+    }
     setSession(data.session);
     const { data: customer } = await supabase
       .from('customers')
@@ -206,7 +211,7 @@ const checkSession = async () => {
       .eq('email', data.session.user.email)
       .single();
     console.log("vrm_url:", customer?.vrm_url);
-if (customer?.vrm_url) setVrmUrl(customer.vrm_url);
+    if (customer?.vrm_url) setVrmUrl(customer.vrm_url);
   }
 };
   checkSession();
