@@ -193,6 +193,8 @@ export default function Home() {
   const router = useRouter();
   const [session, setSession] = useState<any>(null);
  const [vrmUrl, setVrmUrl] = useState('/avatar.vrm'); 
+ const [companyName, setCompanyName] = useState('');
+ const [isReady, setIsReady] = useState(false);
 useEffect(() => {
 const checkSession = async () => {
   const { data } = await supabase.auth.getSession();
@@ -206,12 +208,15 @@ const checkSession = async () => {
     }
     setSession(data.session);
     const { data: customer } = await supabase
-      .from('customers')
-      .select('vrm_url')
-      .eq('email', data.session.user.email)
-      .single();
+  .from('customers')
+  .select('vrm_url, company_name')
+  .eq('email', data.session.user.email)
+  .single();
+
     console.log("vrm_url:", customer?.vrm_url);
     if (customer?.vrm_url) setVrmUrl(customer.vrm_url);
+    if (customer?.company_name) setCompanyName(customer.company_name);
+    setIsReady(true);
   }
 };
   checkSession();
@@ -292,7 +297,7 @@ const sendMessage = async (text: string) => {
     const response = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text, email: session?.user?.email })
+      body: JSON.stringify({ message: text, email: session?.user?.companyName })
     });
     const data = await response.json();
     const reply = data.reply ?? "少しお待ちください";
@@ -326,9 +331,71 @@ const sendMessage = async (text: string) => {
     recognition.start();
   }, []);
 
-  return (
-    <div style={{ width: "100vw", height: "100vh" }}>
-      <Canvas camera={{ position: [0, 1.3, 1.5], fov: 35 }}>
+ if (!isReady) return (
+  <div style={{
+    width: "100vw",
+    height: "100vh",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "linear-gradient(135deg, #1a1a2e, #16213e)",
+    fontSize: "24px",
+    color: "white",
+    gap: "20px"
+  }}>
+    <div style={{ fontSize: "48px" }}>🤖</div>
+    <div>AIコンシェルジュを起動中...</div>
+    <div style={{
+      width: "200px",
+      height: "4px",
+      background: "#333",
+      borderRadius: "2px",
+      overflow: "hidden"
+    }}>
+      <div style={{
+        width: "50%",
+        height: "100%",
+        background: "white",
+        borderRadius: "2px",
+        animation: "loading 1s infinite"
+      }} />
+    </div>
+    <style>{`
+      @keyframes loading {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(400%); }
+      }
+    `}</style>
+  </div>
+);
+
+return (
+  <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
+    {/* ログアウトボタン */}
+    <button
+      onClick={async () => {
+        await supabase.auth.signOut();
+        router.push("/login");
+      }}
+      style={{
+        position: "absolute",
+        top: "16px",
+        right: "16px",
+        zIndex: 10,
+        padding: "8px 16px",
+        background: "rgba(0,0,0,0.5)",
+        color: "white",
+        border: "none",
+        borderRadius: "8px",
+        cursor: "pointer"
+      }}
+    >
+      ログアウト
+    </button>
+
+   
+    <Canvas camera={{ position: [0, 1.3, 1.5], fov: 35 }}>
         <ambientLight intensity={0.7} />
         <directionalLight position={[1, 2, 3]} />
         <Avatar vrmUrl={vrmUrl} />
