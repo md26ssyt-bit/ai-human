@@ -53,8 +53,28 @@ export default function Admin() {
   };
 
   return (
-    <div style={{ padding: "40px", maxWidth: "800px", margin: "0 auto" }}>
-      <h1>管理画面</h1>
+  <div style={{ padding: "40px", maxWidth: "800px", margin: "0 auto", position: "relative" }}>
+    {/* ログアウトボタン */}
+    <button
+      onClick={async () => {
+        await supabase.auth.signOut();
+        router.push("/login");
+      }}
+      style={{
+        position: "absolute",
+        top: "16px",
+        right: "16px",
+        padding: "8px 16px",
+        background: "black",
+        color: "white",
+        border: "none",
+        borderRadius: "8px",
+        cursor: "pointer"
+      }}
+    >
+      ログアウト
+    </button>
+    <h1>管理画面</h1>
 
       <h2>お客様を追加</h2>
       <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "40px" }}>
