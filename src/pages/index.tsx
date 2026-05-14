@@ -200,24 +200,22 @@ const checkSession = async () => {
   const { data } = await supabase.auth.getSession();
   if (!data.session) {
     router.push("/login");
-  } else {
-    // 管理者は管理画面に飛ばす
-    if (data.session.user.email === 'md26ssyt@gmail.com') {
-      router.push("/admin");
-      return;
-    }
-    setSession(data.session);
-    const { data: customer } = await supabase
-  .from('customers')
-  .select('vrm_url, company_name')
-  .eq('email', data.session.user.email)
-  .single();
-
-    console.log("vrm_url:", customer?.vrm_url);
-    if (customer?.vrm_url) setVrmUrl(customer.vrm_url);
-    if (customer?.company_name) setCompanyName(customer.company_name);
-    setIsReady(true);
+ } else {
+  if (data.session.user.email === 'md26ssyt@gmail.com') {
+    router.push("/admin");
+    return;
   }
+  setSession(data.session);
+  setIsReady(true); // ← ここに移動！先に表示する
+  const { data: customer } = await supabase
+    .from('customers')
+    .select('vrm_url, company_name')
+    .eq('email', data.session.user.email)
+    .single();
+  console.log("vrm_url:", customer?.vrm_url);
+  if (customer?.vrm_url) setVrmUrl(customer.vrm_url);
+  if (customer?.company_name) setCompanyName(customer.company_name);
+}
 };
   checkSession();
 }, []);
