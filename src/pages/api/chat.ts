@@ -14,15 +14,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const apiKey = process.env.GEMINI_API_KEY;
 
     // お客様のプロンプトをデータベースから取得
-    let systemPrompt = 'あなたは企業受付AIです。丁寧にお客様をご案内してください。';
-    if (email) {
-      const { data } = await supabase
-        .from('customers')
-        .select('prompt')
-        .eq('email', email)
-        .single();
-      if (data?.prompt) systemPrompt = data.prompt;
-    }
+let systemPrompt = 'あなたは企業受付AIです。丁寧にお客様をご案内してください。';
+let notifyEmail = process.env.NOTIFY_EMAIL;
+let companyName = '不明';
+let staffInfo = '';
+if (email) {
+  const { data } = await supabase
+    .from('customers')
+    .select('prompt, notify_email, company_name')
+    .eq('email', email)
+    .single();
+  if (data?.prompt) systemPrompt = data.prompt;
+  if (data?.notify_email) notifyEmail = data.notify_email;
+  if (data?.company_name) companyName = data.company_name;
+  // 担当者一覧を取得
+const { data: staffData } = await supabase
+  .from('staff')
+  .select('name, email')
+  .eq('customer_id', data.id);
+if (staffData && staffData.length > 0) {
+  staffInfo = staffData.map((s: any) => `${s.name}:${s.email}`).join(',');
+}
+}
 
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
@@ -37,6 +50,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 text: `${systemPrompt}
 必ず自然な会話文だけを返してください。
 "reply:" や "回答:" などのラベルは絶対に出力しないでください。
+担当者一覧：${staffInfo || 'なし'}
+もしユーザーが「伝えてください」「連絡してください」「呼んでください」などの伝言を依頼した場合は、返答の最後に必ず「[NOTIFY:担当者名:伝言内容]」という形式で伝言を追加してください。
+例：「承知しました。田中様にご連絡いたします。[NOTIFY:田中:田中様への来客があります]」
 ユーザー: ${message}`,
               },
             ],
@@ -49,12 +65,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const rawText =
       data.candidates?.[0]?.content?.parts?.[0]?.text ?? '少しお待ちください';
 
-    const reply = rawText
-      .replace(/^reply[:：\s]*/i, '')
-      .replace(/^回答[:：\s]*/i, '')
-      .trim();
+    let reply = rawText
+  .replace(/^reply[:：\s]*/i, '')
+  .replace(/^回答[:：\s]*/i, '')
+  .trim();
 
-    return res.status(200).json({ reply });
+// [NOTIFY:...] を検知してメール送信
+const notifyMatch = reply.match(/\[NOTIFY:(.+?):(.+?)\]/);
+if (notifyMatch) {
+  const staffName = notifyMatch[1];
+  const notifyMessage = notifyMatch[2];
+  reply = reply.replace(/\[NOTIFY:.+?\]/, '').trim();
+
+  // 担当者名からメールアドレスを検索
+  let targetEmail = notifyEmail;
+  if (staffInfo) {
+    const staffList = staffInfo.split(',');
+    const found = staffList.find((s: string) => s.startsWith(staffName));
+    if (found) targetEmail = found.split(':')[1];
+  }
+
+  try {
+    const baseUrl = process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : 'http://localhost:3000';
+    await fetch(`${baseUrl}/api/notify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: notifyMessage,
+        company: companyName,
+        notifyEmail: targetEmail,
+      }),
+    });
+  } catch (e) {
+    console.error('通知エラー:', e);
+  }
+}
+
+return res.status(200).json({ reply });
   } catch (error) {
     console.error('APIエラー:', error);
     return res.status(500).json({ reply: '通信エラーが発生しました' });
