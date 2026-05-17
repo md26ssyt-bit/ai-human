@@ -342,8 +342,8 @@ const sendMessage = async (text: string) => {
     color: "white",
     gap: "20px"
   }}>
-    <div style={{ fontSize: "48px" }}>🤖</div>
-    <div>AIコンシェルジュを起動中...</div>
+    <div style={{ fontSize: "120px", lineHeight: "1" }}>💁‍♀️</div>
+<div style={{ fontSize: "20px", marginTop: "10px" }}>AIコンシェルジェを起動中...</div>
     <div style={{
       width: "200px",
       height: "4px",
