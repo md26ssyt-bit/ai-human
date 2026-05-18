@@ -21,7 +21,7 @@ let staffInfo = '';
 if (email) {
   const { data } = await supabase
     .from('customers')
-    .select('prompt, notify_email, company_name')
+   .select('id, prompt, notify_email, company_name')
     .eq('email', email)
     .single();
   if (data?.prompt) systemPrompt = data.prompt;
