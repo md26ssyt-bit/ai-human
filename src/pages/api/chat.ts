@@ -31,7 +31,7 @@ if (email) {
 const { data: staffData } = await supabase
   .from('staff')
   .select('name, email')
-  .eq('customer_id', data.id);
+  .eq('customer_id', data?.id ?? '');
 if (staffData && staffData.length > 0) {
   staffInfo = staffData.map((s: any) => `${s.name}:${s.email}`).join(',');
 }
