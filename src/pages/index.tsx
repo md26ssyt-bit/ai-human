@@ -1,404 +1,248 @@
-"use client";
-
-import { supabase } from "../lib/supabase";
-import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/router";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
-import { VRM, VRMLoaderPlugin } from "@pixiv/three-vrm";
-import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-
-
-// ======================
-// Avatar
-// ======================
-
-function Avatar({ vrmUrl }: { vrmUrl: string }) {
-const mouthState = useRef({
-  speaking: false,
-  value: 0,
-  volume: 0,
-  inhale: false,
-  blinkAfter: false,
-});
-
-const [vrm, setVrm] = useState<VRM | null>(null);
-const [loading, setLoading] = useState(true);  // ← 追加
-
-// 瞬き
-const blinkState = useRef({
-  timer: 0,
-  nextBlink: 3,
-  value: 0
-});
-
-useEffect(() => {
-  if (!vrmUrl) return;
-  setLoading(true);  // ← 追加
-  const loader = new GLTFLoader();
-  loader.register((parser) => new VRMLoaderPlugin(parser));
-  loader.load(vrmUrl, (gltf) => {
-    const vrmModel = gltf.userData.vrm as VRM;
-    setVrm(vrmModel);
-    setLoading(false);  // ← ここに追加
-    // モデル中央補正
-    const box = new THREE.Box3().setFromObject(vrmModel.scene);
-    const center = box.getCenter(new THREE.Vector3());
-    vrmModel.scene.position.sub(center);
-
-    setVrm(vrmModel);
-
-  });
-
-  (window as any).mouthState = mouthState;
-
-}, [vrmUrl]);
-
-
-useFrame((_, delta) => {
-
-  if (!vrm) return;
-
-  const blink = blinkState.current;
-
-  // ===== 瞬き =====
-  blink.timer += delta;
-
-  if (blink.timer > blink.nextBlink) {
-
-    blink.value += delta * 6;
-
-    if (blink.value >= 1) {
-      blink.value = 1;
-      blink.timer = 0;
-      blink.nextBlink = 2 + Math.random() * 3;
-    }
-
-  } else {
-
-    blink.value -= delta * 6;
-    if (blink.value < 0) blink.value = 0;
-
-  }
-
-  // ===== 呼吸 =====
-  const breathe = Math.sin(Date.now() * 0.002) * 0.005;
-  vrm.scene.position.y = breathe;
-
-  // ===== リップシンク =====
-  const mouth = mouthState.current;
-
-  if (mouth.speaking) {
-    mouth.value = mouth.value * 0.7 + mouth.volume * 0.3;
-  } else {
-    mouth.value = 0;
-  }
-
-  if (vrm.expressionManager) {
-
-    vrm.expressionManager.setValue("blink", blink.value);
-    vrm.expressionManager.setValue("aa", mouth.value);
-    vrm.expressionManager.setValue("happy", 0.3);
-
-    vrm.expressionManager.update();
-
-  }
-
-  vrm.update(delta);
-    // ===== ボーン取得 =====
-
-    const leftUpperArm = vrm.humanoid?.getRawBoneNode("leftUpperArm");
-    const rightUpperArm = vrm.humanoid?.getRawBoneNode("rightUpperArm");
-    const leftLowerArm = vrm.humanoid?.getRawBoneNode("leftLowerArm");
-    const rightLowerArm = vrm.humanoid?.getRawBoneNode("rightLowerArm");
-    const leftHand = vrm.humanoid?.getRawBoneNode("leftHand");
-   const leftThumb1 = vrm.humanoid?.getRawBoneNode("leftThumbMetacarpal");
-   const leftThumb2 = vrm.humanoid?.getRawBoneNode("leftThumbProximal");
-   const leftThumb3 = vrm.humanoid?.getRawBoneNode("leftThumbDistal");
-
-    const rightHand = vrm.humanoid?.getRawBoneNode("rightHand");
-   const rightThumb1 = vrm.humanoid?.getRawBoneNode("rightThumbMetacarpal");
-   const rightThumb2 = vrm.humanoid?.getRawBoneNode("rightThumbProximal");
-   const rightThumb3 = vrm.humanoid?.getRawBoneNode("rightThumbDistal");
-
-    if (
-      leftUpperArm &&
-      rightUpperArm &&
-      leftLowerArm &&
-      rightLowerArm &&
-      leftHand &&
-      rightHand
-    ) {
-
- // ===== 前で手を組む受付ポーズ（完成版） =====
-
-// 肩
-leftUpperArm.rotation.x = -0.25;
-rightUpperArm.rotation.x = -0.25;
-
-leftUpperArm.rotation.y = -1.8;
-rightUpperArm.rotation.y = 1.4;
-
-leftUpperArm.rotation.z = -1.1;
-rightUpperArm.rotation.z = 1.1;
-
-
-// ひじ
-leftLowerArm.rotation.x = -1.0;
-rightLowerArm.rotation.x = -1.0;
-
-
-// ★前腕を内側に回す（これが重要）
-leftLowerArm.rotation.z = -0.2;
-rightLowerArm.rotation.z = 0.2;
-
-
-// 手首（軽く重ねる）
-leftHand.rotation.x = 0.5;
-// 左親指
-if(leftThumb1) leftThumb1.rotation.z = -0.5;
-if(leftThumb2) leftThumb2.rotation.z = -0.6;
-if(leftThumb3) leftThumb3.rotation.z = -0.5;
-rightHand.rotation.x = 0.5;
-// 右親指
-if(rightThumb1) rightThumb1.rotation.z = 0.5;
-if(rightThumb2) rightThumb2.rotation.z = 0.6;
-if(rightThumb3) rightThumb3.rotation.z = 0.5;
-leftHand.rotation.y = 0.01;
-rightHand.rotation.y = -0.01;
-
-leftHand.rotation.z = 0.01;
-rightHand.rotation.z = -0.01;
-    }
-
-  });
-
-if (!vrm) return null;
-if (loading) return <mesh><boxGeometry /><meshStandardMaterial color="gray" /></mesh>;
-return (
-  <group position={[0, -1.6, 0]} scale={3}>
-    <primitive object={vrm.scene} />
-  </group>
-);
-
-}
-
-
-// ======================
-// Home
-// ======================
+import { useState } from "react";
 
 export default function Home() {
-  const router = useRouter();
-  const [session, setSession] = useState<any>(null);
- const [vrmUrl, setVrmUrl] = useState('/avatar.vrm'); 
- const [companyName, setCompanyName] = useState('');
- const [isReady, setIsReady] = useState(false);
-useEffect(() => {
-const checkSession = async () => {
-  const { data } = await supabase.auth.getSession();
-  if (!data.session) {
-    router.push("/login");
- } else {
-  if (data.session.user.email === 'md26ssyt@gmail.com') {
-    router.push("/admin");
-    return;
-  }
-  setSession(data.session);
-  setIsReady(true); // ← ここに移動！先に表示する
-  const { data: customer } = await supabase
-    .from('customers')
-    .select('vrm_url, company_name')
-    .eq('email', data.session.user.email)
-    .single();
-  console.log("vrm_url:", customer?.vrm_url);
-  if (customer?.vrm_url) setVrmUrl(customer.vrm_url);
-  if (customer?.company_name) setCompanyName(customer.company_name);
-}
-};
-  checkSession();
-}, []);
-  const [messages, setMessages] = useState<any[]>([]);
-  const isSpeakingRef = useRef(false);
-  const recognitionRef = useRef<any>(null);
-  
-  const speakQueue = useRef<string[]>([]);
-  const isProcessingQueue = useRef(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [company, setCompany] = useState("");
+  const [message, setMessage] = useState("");
+  const [sent, setSent] = useState(false);
 
-  // --- キューを順番に処理する関数 ---
-  const processQueue = async () => {
-    if (isProcessingQueue.current || speakQueue.current.length === 0) return;
-    isProcessingQueue.current = true;
-    while (speakQueue.current.length > 0) {
-      const nextText = speakQueue.current.shift();
-      if (nextText) await playAudio(nextText);
-    }
-    isProcessingQueue.current = false;
-  };
-
-  // --- 実際の音声再生ロジック ---
-  const playAudio = (text: string) => {
-    return new Promise<void>(async (resolve) => {
-      isSpeakingRef.current = true;
-      try {
-        recognitionRef.current?.stop();
-        const res = await fetch("/api/tts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text })
-        });
-        const blob = await res.blob();
-        const audio = new Audio(URL.createObjectURL(blob));
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const source = audioContext.createMediaElementSource(audio);
-        const analyser = audioContext.createAnalyser();
-        analyser.fftSize = 256;
-        source.connect(analyser);
-        analyser.connect(audioContext.destination);
-        const dataArray = new Uint8Array(analyser.frequencyBinCount);
-        (window as any).mouthState.current.speaking = true;
-        const animate = () => {
-          if (!isSpeakingRef.current) return;
-          analyser.getByteFrequencyData(dataArray);
-          const volume = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-          (window as any).mouthState.current.volume = Math.min(volume / 80, 1);
-          requestAnimationFrame(animate);
-        };
-        audio.onplay = () => animate();
-        audio.onended = () => {
-          isSpeakingRef.current = false;
-          (window as any).mouthState.current.speaking = false;
-          (window as any).mouthState.current.volume = 0;
-          try { recognitionRef.current?.start(); } catch (e) {}
-          resolve();
-        };
-        await audio.play();
-      } catch (error) {
-        console.error("TTSエラー:", error);
-        isSpeakingRef.current = false;
-        resolve();
-      }
+  const handleSubmit = async () => {
+    await fetch('/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, company, message }),
     });
+    setSent(true);
   };
+  return (
+    <div style={{ fontFamily: "sans-serif", color: "#333" }}>
 
-  const speak = (text: string) => {
-    speakQueue.current.push(text);
-    processQueue();
-  };
+      {/* ナビゲーション */}
+      <nav style={{
+        position: "fixed",
+        top: 0,
+        width: "100%",
+        background: "rgba(255,255,255,0.95)",
+        borderBottom: "1px solid #eee",
+        padding: "16px 40px",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        zIndex: 100,
+        boxSizing: "border-box"
+      }}>
+        <div style={{ fontWeight: "bold", fontSize: "20px" }}>Digital Signage Lab.</div>
+        <a href="/login" style={{
+          background: "#1a1a2e",
+          color: "white",
+          padding: "8px 24px",
+          borderRadius: "24px",
+          textDecoration: "none",
+          fontSize: "14px"
+        }}>ログイン</a>
+      </nav>
 
- // --- AIに送信 ---
-const sendMessage = async (text: string) => {
-  if (!text) return;
-  setMessages(prev => [...prev, { role: "user", text }]);
-  try {
-    const response = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text, email: session?.user?.companyName })
-    });
-    const data = await response.json();
-    const reply = data.reply ?? "少しお待ちください";
-
-    setMessages(prev => [...prev, { role: "ai", text: reply }]);
-
-    // 句読点で分割して順番に読み上げ
-    const sentences = reply.split(/(?<=[。！？])/);
-    for (const sentence of sentences) {
-      if (sentence.trim()) speak(sentence.trim());
-    }
-  } catch (error) {
-    console.error("APIエラー:", error);
-  }
-};
-  // 🔥 音声認識を復活
-  useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
-    const recognition = new SpeechRecognition();
-    recognitionRef.current = recognition;
-    recognition.lang = "ja-JP";
-    recognition.continuous = true;
-    recognition.onresult = (event: any) => {
-      const text = event.results[event.results.length - 1][0].transcript;
-      sendMessage(text);
-    };
-    recognition.onend = () => {
-      if (!isSpeakingRef.current) try { recognition.start(); } catch (e) {}
-    };
-    recognition.start();
-  }, []);
-
- if (!isReady) return (
-  <div style={{
-    width: "100vw",
-    height: "100vh",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    background: "linear-gradient(135deg, #1a1a2e, #16213e)",
-    fontSize: "24px",
-    color: "white",
-    gap: "20px"
-  }}>
-    <div style={{ fontSize: "120px", lineHeight: "1" }}>💁‍♀️</div>
-<div style={{ fontSize: "20px", marginTop: "10px" }}>AIコンシェルジェを起動中...</div>
-    <div style={{
-      width: "200px",
-      height: "4px",
-      background: "#333",
-      borderRadius: "2px",
-      overflow: "hidden"
-    }}>
-      <div style={{
-        width: "50%",
-        height: "100%",
-        background: "white",
-        borderRadius: "2px",
-        animation: "loading 1s infinite"
-      }} />
-    </div>
-    <style>{`
-      @keyframes loading {
-        0% { transform: translateX(-100%); }
-        100% { transform: translateX(400%); }
-      }
-    `}</style>
-  </div>
-);
-
-return (
-  <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
-    {/* ログアウトボタン */}
-    <button
-      onClick={async () => {
-        await supabase.auth.signOut();
-        router.push("/login");
-      }}
-      style={{
-        position: "absolute",
-        top: "16px",
-        right: "16px",
-        zIndex: 10,
-        padding: "8px 16px",
-        background: "rgba(0,0,0,0.5)",
+      {/* ヒーローセクション */}
+      <section style={{
+        background: "linear-gradient(135deg, #1a1a2e, #16213e)",
         color: "white",
-        border: "none",
-        borderRadius: "8px",
-        cursor: "pointer"
-      }}
-    >
-      ログアウト
-    </button>
+        padding: "160px 40px 100px",
+        textAlign: "center"
+      }}>
+        <h1 style={{ fontSize: "48px", marginBottom: "24px", lineHeight: "1.3" }}>
+          AIがあなたの受付を<br />24時間サポート
+        </h1>
+        <p style={{ fontSize: "20px", marginBottom: "40px", opacity: 0.8 }}>
+          最新のAI技術と3Dアバターで、<br />お客様をおもてなし
+        </p>
+        <a href="/login" style={{
+          background: "white",
+          color: "#1a1a2e",
+          padding: "16px 48px",
+          borderRadius: "32px",
+          textDecoration: "none",
+          fontSize: "18px",
+          fontWeight: "bold"
+        }}>
+          無料デモを見る
+        </a>
+      </section>
 
-   
-    <Canvas camera={{ position: [0, 1.3, 1.5], fov: 35 }}>
-        <ambientLight intensity={0.7} />
-        <directionalLight position={[1, 2, 3]} />
-        <Avatar vrmUrl={vrmUrl} />
-        <OrbitControls target={[0, 1.2, 0]} />
-      </Canvas>
+      {/* サービスの説明 */}
+      <section style={{ padding: "100px 40px", background: "#f9f9f9", textAlign: "center" }}>
+        <h2 style={{ fontSize: "36px", marginBottom: "60px" }}>サービスの特徴</h2>
+        <div style={{
+          display: "flex",
+          justifyContent: "center",
+          gap: "40px",
+          flexWrap: "wrap",
+          maxWidth: "1000px",
+          margin: "0 auto"
+        }}>
+          {[
+            { icon: "💁‍♀️", title: "AIアバター受付", desc: "3Dキャラクターが自然な会話でお客様をご案内します" },
+            { icon: "🕐", title: "24時間対応", desc: "休日・夜間も対応可能。受付コストを大幅に削減" },
+            { icon: "🏢", title: "カスタマイズ可能", desc: "会社ごとに異なるキャラクターとプロンプトを設定" },
+            { icon: "📧", title: "担当者通知", desc: "お客様の伝言を担当者にメールで自動通知" },
+          ].map((item, i) => (
+            <div key={i} style={{
+              background: "white",
+              padding: "40px 30px",
+              borderRadius: "16px",
+              width: "200px",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.08)"
+            }}>
+              <div style={{ fontSize: "48px", marginBottom: "16px" }}>{item.icon}</div>
+              <h3 style={{ fontSize: "18px", marginBottom: "12px" }}>{item.title}</h3>
+              <p style={{ fontSize: "14px", color: "#666", lineHeight: "1.6" }}>{item.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 料金プラン */}
+      <section style={{ padding: "100px 40px", textAlign: "center" }}>
+        <h2 style={{ fontSize: "36px", marginBottom: "16px" }}>料金プラン</h2>
+        <p style={{ color: "#666", marginBottom: "60px" }}>ハードウェアは買い切り、ソフトウェアは月額制</p>
+
+        {/* ハードウェア */}
+        <h3 style={{ fontSize: "24px", marginBottom: "40px" }}>ハードウェア（買い切り）</h3>
+        <div style={{
+          display: "flex",
+          justifyContent: "center",
+          gap: "30px",
+          flexWrap: "wrap",
+          marginBottom: "80px",
+          maxWidth: "900px",
+          margin: "0 auto 80px"
+        }}>
+          {[
+            { name: "ベーシック", price: "178,000", desc: "小規模オフィス向け" },
+            { name: "スタンダード", price: "248,000", desc: "中規模オフィス向け", popular: true },
+            { name: "プレミアム", price: "298,000", desc: "大規模オフィス向け" },
+          ].map((plan, i) => (
+            <div key={i} style={{
+              background: plan.popular ? "#1a1a2e" : "white",
+              color: plan.popular ? "white" : "#333",
+              padding: "40px 30px",
+              borderRadius: "16px",
+              width: "220px",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
+              border: plan.popular ? "none" : "1px solid #eee",
+              position: "relative"
+            }}>
+              {plan.popular && (
+                <div style={{
+                  position: "absolute",
+                  top: "-12px",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  background: "#e74c3c",
+                  color: "white",
+                  padding: "4px 16px",
+                  borderRadius: "12px",
+                  fontSize: "12px"
+                }}>人気</div>
+              )}
+              <h3 style={{ fontSize: "20px", marginBottom: "8px" }}>{plan.name}</h3>
+              <p style={{ fontSize: "14px", opacity: 0.7, marginBottom: "16px" }}>{plan.desc}</p>
+              <div style={{ fontSize: "32px", fontWeight: "bold" }}>¥{plan.price}</div>
+              <div style={{ fontSize: "14px", opacity: 0.7 }}>税別</div>
+            </div>
+          ))}
+        </div>
+
+        {/* ソフトウェア */}
+        <h3 style={{ fontSize: "24px", marginBottom: "40px" }}>ソフトウェア（月額）</h3>
+        <div style={{
+          background: "#f9f9f9",
+          padding: "40px",
+          borderRadius: "16px",
+          maxWidth: "500px",
+          margin: "0 auto",
+          textAlign: "left"
+        }}>
+          <div style={{ fontSize: "36px", fontWeight: "bold", marginBottom: "16px" }}>
+            ¥29,800<span style={{ fontSize: "16px", fontWeight: "normal" }}>/月（税別）</span>
+          </div>
+          <ul style={{ listStyle: "none", padding: 0, lineHeight: "2" }}>
+            <li>✅ AIアバター受付システム</li>
+            <li>✅ 月1回のコンテンツ変更無料</li>
+            <li>✅ 担当者メール通知</li>
+            <li>✅ 24時間サポート</li>
+            <li>⚙️ 2回目以降の変更：¥8,900/回</li>
+          </ul>
+        </div>
+      </section>
+
+      {/* デモ動画 */}
+      <section style={{ padding: "100px 40px", background: "#f9f9f9", textAlign: "center" }}>
+        <h2 style={{ fontSize: "36px", marginBottom: "16px" }}>デモ動画</h2>
+        <p style={{ color: "#666", marginBottom: "40px" }}>近日公開予定</p>
+        <div style={{
+          background: "#ddd",
+          width: "640px",
+          height: "360px",
+          borderRadius: "16px",
+          margin: "0 auto",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "48px"
+        }}>
+          🎬
+        </div>
+      </section>
+
+      {/* お問い合わせ */}
+      <section style={{ padding: "100px 40px", textAlign: "center" }}>
+        <h2 style={{ fontSize: "36px", marginBottom: "16px" }}>お問い合わせ</h2>
+        <p style={{ color: "#666", marginBottom: "40px" }}>お気軽にご連絡ください</p>
+        <div style={{
+          maxWidth: "500px",
+          margin: "0 auto",
+          display: "flex",
+          flexDirection: "column",
+          gap: "16px"
+        }}>
+          {sent ? (
+  <div style={{ padding: "40px", background: "#f0f9f0", borderRadius: "8px", color: "#2ecc71", fontSize: "18px" }}>
+    ✅ お問い合わせを受け付けました！
+  </div>
+) : (
+  <>
+    <input placeholder="お名前" value={name} onChange={e => setName(e.target.value)} style={{ padding: "12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "16px" }} />
+    <input placeholder="メールアドレス" value={email} onChange={e => setEmail(e.target.value)} style={{ padding: "12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "16px" }} />
+    <input placeholder="会社名" value={company} onChange={e => setCompany(e.target.value)} style={{ padding: "12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "16px" }} />
+    <textarea placeholder="お問い合わせ内容" value={message} onChange={e => setMessage(e.target.value)} style={{ padding: "12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "16px", height: "150px" }} />
+    <button onClick={handleSubmit} style={{
+      background: "#1a1a2e",
+      color: "white",
+      padding: "16px",
+      borderRadius: "8px",
+      border: "none",
+      fontSize: "16px",
+      cursor: "pointer"
+    }}>
+      送信する
+    </button>
+  </>
+)}
+        </div>
+      </section>
+
+      {/* フッター */}
+      <footer style={{
+        background: "#1a1a2e",
+        color: "white",
+        padding: "40px",
+        textAlign: "center"
+      }}>
+        <div style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "16px" }}>Digital Signage Lab.</div>
+        <p style={{ opacity: 0.6, fontSize: "14px" }}>© 2026 Digital Signage Lab. All rights reserved.</p>
+      </footer>
+
     </div>
   );
 }

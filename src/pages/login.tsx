@@ -16,7 +16,7 @@ export default function Login() {
     if (error) {
       setError("メールアドレスまたはパスワードが違います");
     } else {
-      router.push("/");
+      router.push("/kiosk")
     }
   };
 
