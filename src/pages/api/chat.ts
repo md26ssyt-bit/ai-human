@@ -30,10 +30,10 @@ if (email) {
   // 担当者一覧を取得
 const { data: staffData } = await supabase
   .from('staff')
-  .select('name, email')
+  .select('name, email, phone')
   .eq('customer_id', data?.id ?? '');
 if (staffData && staffData.length > 0) {
-  staffInfo = staffData.map((s: any) => `${s.name}:${s.email}`).join(',');
+  sstaffInfo = staffData.map((s: any) => `${s.name}:${s.email}:${s.phone || ''}`).join(',');
 }
 }
 
@@ -53,6 +53,8 @@ if (staffData && staffData.length > 0) {
 担当者一覧：${staffInfo || 'なし'}
 もしユーザーが「伝えてください」「連絡してください」「呼んでください」などの伝言を依頼した場合は、返答の最後に必ず「[NOTIFY:担当者名:伝言内容]」という形式で伝言を追加してください。
 例：「承知しました。田中様にご連絡いたします。[NOTIFY:田中:田中様への来客があります]」
+もしユーザーが担当者を呼びたい場合は、返答の最後に「[CALL:担当者名:電話番号]」という形式も追加してください。
+例：「田中様をお呼びします。[NOTIFY:田中:来客があります][CALL:田中:090-0000-0000]」
 ユーザー: ${message}`,
               },
             ],

@@ -8,11 +8,12 @@ const supabase = createClient(
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
-    const { customer_id, name, email } = req.body;
+    const { customer_id, name, email, phone } = req.body;
     const { error } = await supabase.from('staff').insert({
       customer_id,
       name,
       email,
+      phone, 
       created_at: new Date().toISOString(),
     });
     if (error) return res.status(500).json({ error });

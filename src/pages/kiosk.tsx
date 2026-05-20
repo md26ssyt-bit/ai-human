@@ -195,6 +195,7 @@ export default function Home() {
  const [vrmUrl, setVrmUrl] = useState('/avatar.vrm'); 
  const [companyName, setCompanyName] = useState('');
  const [isReady, setIsReady] = useState(false);
+ const [callButton, setCallButton] = useState<{name: string, phone: string} | null>(null); 
 useEffect(() => {
 const checkSession = async () => {
   const { data } = await supabase.auth.getSession();
@@ -298,10 +299,17 @@ const sendMessage = async (text: string) => {
       body: JSON.stringify({ message: text, email: session?.user?.companyName })
     });
     const data = await response.json();
-    const reply = data.reply ?? "少しお待ちください";
+    let reply = data.reply ?? "少しお待ちください";
 
     setMessages(prev => [...prev, { role: "ai", text: reply }]);
-
+// 電話ボタンの検知 [CALL:名前:電話番号]
+const callMatch = reply.match(/\[CALL:(.+?):(.+?)\]/);
+if (callMatch) {
+  setCallButton({ name: callMatch[1], phone: callMatch[2] });
+  reply = reply.replace(/\[CALL:.+?\]/, '').trim();
+} else {
+  setCallButton(null);
+}
     // 句読点で分割して順番に読み上げ
     const sentences = reply.split(/(?<=[。！？])/);
     for (const sentence of sentences) {
@@ -343,7 +351,7 @@ const sendMessage = async (text: string) => {
     gap: "20px"
   }}>
     <div style={{ fontSize: "120px", lineHeight: "1" }}>💁‍♀️</div>
-<div style={{ fontSize: "20px", marginTop: "10px" }}>AIコンシェルジェを起動中...</div>
+<div style={{ fontSize: "20px", marginTop: "10px" }}>AIコンシェルジュを起動中...</div>
     <div style={{
       width: "200px",
       height: "4px",
@@ -392,7 +400,31 @@ return (
       ログアウト
     </button>
 
-   
+   {/* 電話ボタン */}
+{callButton && (
+  <div style={{
+    position: "absolute",
+    bottom: "80px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    zIndex: 10,
+    textAlign: "center"
+  }}>
+    <a href={`tel:${callButton.phone}`} style={{
+      display: "block",
+      background: "#2ecc71",
+      color: "white",
+      padding: "16px 40px",
+      borderRadius: "32px",
+      fontSize: "20px",
+      textDecoration: "none",
+      boxShadow: "0 4px 20px rgba(0,0,0,0.3)"
+    }}>
+      📞 {callButton.name}さんに電話する
+    </a>
+  </div>
+)}
+
     <Canvas camera={{ position: [0, 1.3, 1.5], fov: 35 }}>
         <ambientLight intensity={0.7} />
         <directionalLight position={[1, 2, 3]} />

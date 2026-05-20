@@ -19,6 +19,7 @@ export default function Admin() {
   const [staffList, setStaffList] = useState<any[]>([]);
   const [staffName, setStaffName] = useState("");
   const [staffEmail, setStaffEmail] = useState("");
+  const [staffPhone, setStaffPhone] = useState(""); 
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
 
   useEffect(() => {
@@ -77,11 +78,13 @@ export default function Admin() {
         customer_id: selectedCustomerId,
         name: staffName,
         email: staffEmail,
+        phone: staffPhone, 
       }),
     });
     fetchStaff(selectedCustomerId);
     setStaffName("");
     setStaffEmail("");
+    setStaffPhone(""); 
   };
 
   const deleteStaff = async (id: string) => {
@@ -174,6 +177,7 @@ export default function Admin() {
         </select>
         <input placeholder="担当者の名前" value={staffName} onChange={e => setStaffName(e.target.value)} style={{ padding: "8px" }} />
         <input placeholder="担当者のメールアドレス" value={staffEmail} onChange={e => setStaffEmail(e.target.value)} style={{ padding: "8px" }} />
+        <input placeholder="担当者の電話番号" value={staffPhone} onChange={e => setStaffPhone(e.target.value)} style={{ padding: "8px" }} />
         <button onClick={addStaff} style={{ padding: "10px", background: "black", color: "white", cursor: "pointer" }}>
           担当者を追加する
         </button>
