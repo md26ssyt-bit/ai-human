@@ -218,7 +218,7 @@ const checkSession = async () => {
   }
  const userEmail = data.session.user.email;
 setSession(data.session);
-localStorage.setItem('userEmail', userEmail);
+localStorage.setItem('userEmail', userEmail ?? '');
 const { data: customer } = await supabase
   .from('customers')
   .select('vrm_url, company_name, greeting')  // ← ここだけ変更
