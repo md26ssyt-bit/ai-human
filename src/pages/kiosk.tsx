@@ -9,7 +9,6 @@ import { VRM, VRMLoaderPlugin } from "@pixiv/three-vrm";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
-
 // ======================
 // Avatar
 // ======================
@@ -192,10 +191,21 @@ return (
 export default function Home() {
   const router = useRouter();
   const [session, setSession] = useState<any>(null);
- const [vrmUrl, setVrmUrl] = useState('/avatar.vrm'); 
- const [companyName, setCompanyName] = useState('');
- const [isReady, setIsReady] = useState(false);
- const [callButton, setCallButton] = useState<{name: string, phone: string} | null>(null); 
+  const [vrmUrl, setVrmUrl] = useState('/avatar.vrm'); 
+  const [companyName, setCompanyName] = useState('');
+  const [greeting, setGreeting] = useState('');  // ← ここに追加
+  const [isReady, setIsReady] = useState(false);
+  // mouthState初期化
+if (typeof window !== 'undefined' && !(window as any).mouthState) {
+  (window as any).mouthState = { current: { speaking: false, volume: 0 } };
+}
+  const sendMessageRef = useRef<((text: string, emailOverride?: string) => void) | null>(null);
+  const isPersonDetectedRef = useRef(false);
+  const [callButton, setCallButton] = useState<{name: string, phone: string} | null>(null);
+  const [isPersonDetected, setIsPersonDetected] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const detectorRef = useRef<any>(null);
+  const detectionTimerRef = useRef<NodeJS.Timeout | null>(null);
 useEffect(() => {
 const checkSession = async () => {
   const { data } = await supabase.auth.getSession();
@@ -206,20 +216,32 @@ const checkSession = async () => {
     router.push("/admin");
     return;
   }
-  setSession(data.session);
-  setIsReady(true); // ← ここに移動！先に表示する
-  const { data: customer } = await supabase
-    .from('customers')
-    .select('vrm_url, company_name')
-    .eq('email', data.session.user.email)
-    .single();
-  console.log("vrm_url:", customer?.vrm_url);
-  if (customer?.vrm_url) setVrmUrl(customer.vrm_url);
-  if (customer?.company_name) setCompanyName(customer.company_name);
+ const userEmail = data.session.user.email;
+setSession(data.session);
+localStorage.setItem('userEmail', userEmail);
+const { data: customer } = await supabase
+  .from('customers')
+  .select('vrm_url, company_name, greeting')  // ← ここだけ変更
+  .eq('email', userEmail)
+  .single();
+
+console.log("vrm_url:", customer?.vrm_url);
+console.log("greeting:", customer?.greeting);  // 確認用
+console.log("customer data:", JSON.stringify(customer));
+if (customer?.vrm_url) setVrmUrl(customer.vrm_url);
+if (customer?.company_name) setCompanyName(customer.company_name);
+if (customer?.greeting) setGreeting(customer.greeting);  // ← 追加
+setIsReady(true);
+const emailForGreeting = userEmail;
+const greetingText = customer?.greeting || "こんにちは";
+
+  // 自動挨拶
+ 
 }
 };
   checkSession();
 }, []);
+
   const [messages, setMessages] = useState<any[]>([]);
   const isSpeakingRef = useRef(false);
   const recognitionRef = useRef<any>(null);
@@ -228,7 +250,7 @@ const checkSession = async () => {
   const isProcessingQueue = useRef(false);
 
   // --- キューを順番に処理する関数 ---
-  const processQueue = async () => {
+ const processQueue = async () => {
     if (isProcessingQueue.current || speakQueue.current.length === 0) return;
     isProcessingQueue.current = true;
     while (speakQueue.current.length > 0) {
@@ -238,6 +260,66 @@ const checkSession = async () => {
     isProcessingQueue.current = false;
   };
 
+const speakDirectly = (text: string) => {
+  setMessages(prev => [...prev, { role: "ai", text }]);
+ playAudio(text);
+};
+
+const initDetector = async () => {
+  // 何もしない（動き検知はcanvasで行う）
+};
+// カメラ起動
+const startCamera = async () => {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    if (videoRef.current) {
+      videoRef.current.srcObject = stream;
+      await videoRef.current.play();
+    }
+  } catch (e) {
+    console.error('カメラエラー:', e);
+  }
+};
+
+// 人体検知ループ
+const startDetection = () => {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });  // 警告も解消
+  let prevImageData: ImageData | null = null;
+  let ready = false;
+
+  setTimeout(() => { ready = true; }, 3000);  // 3秒後から検知開始
+
+  const detect = () => {
+    if (!videoRef.current || !ctx) return;
+    canvas.width = 64;
+    canvas.height = 48;
+    ctx.drawImage(videoRef.current, 0, 0, 64, 48);
+    const imageData = ctx.getImageData(0, 0, 64, 48);
+
+    if (prevImageData && ready) {  // readyの時だけ検知
+      let diff = 0;
+      for (let i = 0; i < imageData.data.length; i += 4) {
+        diff += Math.abs(imageData.data[i] - prevImageData.data[i]);
+      }
+      const motion = diff / (64 * 48);
+      console.log("motion:", motion);
+
+      if (motion > 3) {
+        setIsPersonDetected(true);
+        isPersonDetectedRef.current = true;
+        if (detectionTimerRef.current) clearTimeout(detectionTimerRef.current);
+        detectionTimerRef.current = setTimeout(() => {
+          setIsPersonDetected(false);
+          isPersonDetectedRef.current = false;
+        }, 30000);
+      }
+    }
+    prevImageData = imageData;
+    setTimeout(detect, 500);
+  };
+  detect();
+};
   // --- 実際の音声再生ロジック ---
   const playAudio = (text: string) => {
     return new Promise<void>(async (resolve) => {
@@ -289,15 +371,17 @@ const checkSession = async () => {
   };
 
  // --- AIに送信 ---
-const sendMessage = async (text: string) => {
+const sendMessage = async (text: string, emailOverride?: string) => {
   if (!text) return;
   setMessages(prev => [...prev, { role: "user", text }]);
   try {
-    const response = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text, email: session?.user?.companyName })
-    });
+  const email = emailOverride || session?.user?.email || localStorage.getItem('userEmail') || '';
+console.log("sending email:", email);
+const response = await fetch("/api/chat", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ message: text, email })
+});
     const data = await response.json();
     let reply = data.reply ?? "少しお待ちください";
 
@@ -336,7 +420,26 @@ if (callMatch) {
     };
     recognition.start();
   }, []);
+  useEffect(() => {
+  const init = async () => {
+    await initDetector();
+    await startCamera();
+    startDetection();
+  };
+  init();
+}, []);
+useEffect(() => {
+  sendMessageRef.current = sendMessage;
+});
 
+useEffect(() => {
+  if (isPersonDetected && greeting) {
+    console.log("挨拶発動:", greeting);
+    setTimeout(() => {
+      speakDirectly(greeting);
+    }, 1000);
+  }
+}, [isPersonDetected, greeting]);
  if (!isReady) return (
   <div style={{
     width: "100vw",
@@ -374,10 +477,10 @@ if (callMatch) {
       }
     `}</style>
   </div>
-);
-
+); 
 return (
   <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
+    <video ref={videoRef} style={{ display: 'none' }} playsInline muted />
     {/* ログアウトボタン */}
     <button
       onClick={async () => {
@@ -425,12 +528,25 @@ return (
   </div>
 )}
 
-    <Canvas camera={{ position: [0, 1.3, 1.5], fov: 35 }}>
-        <ambientLight intensity={0.7} />
-        <directionalLight position={[1, 2, 3]} />
-        <Avatar vrmUrl={vrmUrl} />
-        <OrbitControls target={[0, 1.2, 0]} />
-      </Canvas>
+ {isPersonDetected ? (
+  <Canvas
+    style={{ width: '100%', height: '100%', display: 'block' }}
+    camera={{ position: [0, 1.2, 4.0], fov: 25 }}
+  >
+    <ambientLight intensity={0.7} />
+    <directionalLight position={[1, 2, 3]} />
+    <Avatar vrmUrl={vrmUrl} />
+    <OrbitControls target={[0, 1.2, 0]} />
+  </Canvas>
+) : (
+  <div style={{
+    width: '100%', height: '100%',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    background: '#000', color: '#fff', fontSize: '24px'
+  }}>
+    しばらくお待ちください...
+  </div>
+)}
     </div>
   );
 }

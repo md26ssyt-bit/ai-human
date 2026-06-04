@@ -16,12 +16,18 @@ export default function Admin() {
   const [vrmUrl, setVrmUrl] = useState("");
   const [password, setPassword] = useState("");
   const [notifyEmail, setNotifyEmail] = useState("");
+  const [greeting, setGreeting] = useState("");
   const [staffList, setStaffList] = useState<any[]>([]);
   const [staffName, setStaffName] = useState("");
   const [staffEmail, setStaffEmail] = useState("");
   const [staffPhone, setStaffPhone] = useState(""); 
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
-
+  const [voiceName, setVoiceName] = useState('ja-JP-Neural2-B');
+  const [invoiceCustomerId, setInvoiceCustomerId] = useState("");
+  const [invoiceItems, setInvoiceItems] = useState([{ name: "", quantity: 1, price: 0 }]);
+  const [issueDate, setIssueDate] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [sendingInvoice, setSendingInvoice] = useState(false);
   useEffect(() => {
     const checkAdmin = async () => {
       const { data } = await supabase.auth.getSession();
@@ -53,6 +59,8 @@ export default function Admin() {
       prompt,
       vrm_url: vrmUrl,
       notify_email: notifyEmail,
+      greeting: greeting,
+      voice_name: voiceName, 
       created_at: new Date().toISOString(),
     });
     fetchCustomers();
@@ -95,7 +103,45 @@ export default function Admin() {
     });
     if (selectedCustomerId) fetchStaff(selectedCustomerId);
   };
+const sendInvoice = async () => {
+  if (!invoiceCustomerId) return alert("会社を選んでください");
+  const customer = customers.find(c => c.id === invoiceCustomerId);
+  if (!customer) return;
 
+  const total = invoiceItems.reduce((sum, item) => sum + item.quantity * item.price, 0);
+  console.log("inserting invoice...");
+  const { data: invoice, error } = await supabase
+    .from("invoices")
+    .insert({
+      customer_email: customer.email,
+      company_name: customer.company_name,
+      items: invoiceItems,
+      total,
+      issue_date: issueDate,
+      due_date: dueDate,
+    })
+    .select()
+    .single();
+  console.log("invoice:", invoice, "error:", error);
+  if (error || !invoice) return alert("請求書の作成に失敗しました");
+
+  setSendingInvoice(true);
+  const res = await fetch("/api/send-invoice", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ invoiceId: invoice.id }),
+  });
+
+  setSendingInvoice(false);
+  if (res.ok) {
+    alert("請求書を送信しました！");
+    setInvoiceItems([{ name: "", quantity: 1, price: 0 }]);
+    setIssueDate("");
+    setDueDate("");
+  } else {
+    alert("送信に失敗しました");
+  }
+};
   return (
     <div style={{ padding: "40px", maxWidth: "800px", margin: "0 auto", position: "relative" }}>
       {/* ログアウトボタン */}
@@ -129,6 +175,15 @@ export default function Admin() {
         <textarea placeholder="AIへの指示文（プロンプト）" value={prompt} onChange={e => setPrompt(e.target.value)} style={{ padding: "8px", height: "100px" }} />
         <input placeholder="VRMファイルのURL" value={vrmUrl} onChange={e => setVrmUrl(e.target.value)} style={{ padding: "8px" }} />
         <input placeholder="通知先メールアドレス" value={notifyEmail} onChange={e => setNotifyEmail(e.target.value)} style={{ padding: "8px" }} />
+        <input placeholder="最初の挨拶文" value={greeting} onChange={e => setGreeting(e.target.value)} style={{ padding: "8px" }} />
+        <select value={voiceName} onChange={e => setVoiceName(e.target.value)} style={{ padding: "8px" }}>
+        <option value="ja-JP-Neural2-B">女性A（落ち着いた）</option>
+        <option value="ja-JP-Neural2-C">男性A（低め）</option>
+        <option value="ja-JP-Neural2-D">男性B（明るい）</option>
+        <option value="ja-JP-Neural2-F">女性B（明るい）</option>
+        <option value="ja-JP-Wavenet-A">女性C（自然）</option>
+        <option value="ja-JP-Wavenet-B">男性C（自然）</option>
+</select>
         <button onClick={addCustomer} style={{ padding: "10px", background: "black", color: "white", cursor: "pointer" }}>
           追加する
         </button>
@@ -206,6 +261,95 @@ export default function Admin() {
           ))}
         </tbody>
       </table>
+      <h2>請求書を送る</h2>
+<div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "40px" }}>
+  <select
+    value={invoiceCustomerId}
+    onChange={e => setInvoiceCustomerId(e.target.value)}
+    style={{ padding: "8px" }}
+  >
+    <option value="">会社を選んでください</option>
+    {customers.map(customer => (
+      <option key={customer.id} value={customer.id}>
+        {customer.company_name}
+      </option>
+    ))}
+  </select>
+
+  <input
+    type="date"
+    placeholder="発行日"
+    value={issueDate}
+    onChange={e => setIssueDate(e.target.value)}
+    style={{ padding: "8px" }}
+  />
+  <input
+    type="date"
+    placeholder="支払期限"
+    value={dueDate}
+    onChange={e => setDueDate(e.target.value)}
+    style={{ padding: "8px" }}
+  />
+
+  <h3>品目</h3>
+  {invoiceItems.map((item, index) => (
+    <div key={index} style={{ display: "flex", gap: "8px" }}>
+      <input
+        placeholder="品目名"
+        value={item.name}
+        onChange={e => {
+          const updated = [...invoiceItems];
+          updated[index].name = e.target.value;
+          setInvoiceItems(updated);
+        }}
+        style={{ padding: "8px", flex: 2 }}
+      />
+      <input
+        type="number"
+        placeholder="数量"
+        value={item.quantity}
+        onChange={e => {
+          const updated = [...invoiceItems];
+          updated[index].quantity = Number(e.target.value);
+          setInvoiceItems(updated);
+        }}
+        style={{ padding: "8px", flex: 1 }}
+      />
+      <input
+        type="number"
+        placeholder="単価"
+        value={item.price}
+        onChange={e => {
+          const updated = [...invoiceItems];
+          updated[index].price = Number(e.target.value);
+          setInvoiceItems(updated);
+        }}
+        style={{ padding: "8px", flex: 1 }}
+      />
+      <button
+        onClick={() => setInvoiceItems(invoiceItems.filter((_, i) => i !== index))}
+        style={{ padding: "8px", background: "red", color: "white", cursor: "pointer" }}
+      >
+        削除
+      </button>
+    </div>
+  ))}
+
+  <button
+    onClick={() => setInvoiceItems([...invoiceItems, { name: "", quantity: 1, price: 0 }])}
+    style={{ padding: "8px", background: "#555", color: "white", cursor: "pointer" }}
+  >
+    ＋ 品目を追加
+  </button>
+
+  <button
+    onClick={sendInvoice}
+    disabled={sendingInvoice}
+    style={{ padding: "10px", background: "black", color: "white", cursor: "pointer" }}
+  >
+    {sendingInvoice ? "送信中..." : "請求書を送信する"}
+  </button>
+</div>
     </div>
   );
 }

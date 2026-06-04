@@ -38,7 +38,7 @@ export default function Login() {
       fontSize: "18px",
       color: "#333"
     }}>
-      Digital Signage Lab.
+      Digkio Lab.
     </div>
     <h1 style={{ fontSize: "32px", marginBottom: "10px" }}>AIコンシェルジュ</h1>
     

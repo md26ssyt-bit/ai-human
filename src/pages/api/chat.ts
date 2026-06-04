@@ -13,29 +13,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { message, email } = req.body;
     const apiKey = process.env.GEMINI_API_KEY;
 
-    // お客様のプロンプトをデータベースから取得
-let systemPrompt = 'あなたは企業受付AIです。丁寧にお客様をご案内してください。';
-let notifyEmail = process.env.NOTIFY_EMAIL;
-let companyName = '不明';
-let staffInfo = '';
-if (email) {
-  const { data } = await supabase
-    .from('customers')
-   .select('id, prompt, notify_email, company_name')
-    .eq('email', email)
-    .single();
-  if (data?.prompt) systemPrompt = data.prompt;
-  if (data?.notify_email) notifyEmail = data.notify_email;
-  if (data?.company_name) companyName = data.company_name;
-  // 担当者一覧を取得
-const { data: staffData } = await supabase
-  .from('staff')
-  .select('name, email, phone')
-  .eq('customer_id', data?.id ?? '');
-if (staffData && staffData.length > 0) {
-  sstaffInfo = staffData.map((s: any) => `${s.name}:${s.email}:${s.phone || ''}`).join(',');
-}
-}
+    let systemPrompt = 'あなたは企業受付AIです。丁寧にお客様をご案内してください。';
+    let notifyEmail = process.env.NOTIFY_EMAIL;
+    let companyName = '不明';
+    let staffInfo = '';
+    let customerId = '';
+
+    if (email) {
+      const { data } = await supabase
+        .from('customers')
+        .select('id, prompt, notify_email, company_name, greeting')
+        .eq('email', email)
+        .single();
+      if (data?.prompt) systemPrompt = data.prompt;
+      if (data?.notify_email) notifyEmail = data.notify_email;
+      if (data?.company_name) companyName = data.company_name;
+      if (data?.id) customerId = data.id;
+      if (data?.greeting) {
+        systemPrompt = `${systemPrompt}\n最初の挨拶は必ず「${data.greeting}」から始めてください。`;
+      }
+      console.log("systemPrompt:", systemPrompt);
+      console.log("greeting:", data?.greeting);
+
+      if (customerId) {
+        const { data: staffData } = await supabase
+          .from('staff')
+          .select('name, email, phone')
+          .eq('customer_id', customerId);
+        if (staffData && staffData.length > 0) {
+          staffInfo = staffData.map((s: any) => `${s.name}:${s.email}:${s.phone || ''}`).join(',');
+        }
+      }
+    }
 
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
@@ -68,44 +77,42 @@ if (staffData && staffData.length > 0) {
       data.candidates?.[0]?.content?.parts?.[0]?.text ?? '少しお待ちください';
 
     let reply = rawText
-  .replace(/^reply[:：\s]*/i, '')
-  .replace(/^回答[:：\s]*/i, '')
-  .trim();
+      .replace(/^reply[:：\s]*/i, '')
+      .replace(/^回答[:：\s]*/i, '')
+      .trim();
 
-// [NOTIFY:...] を検知してメール送信
-const notifyMatch = reply.match(/\[NOTIFY:(.+?):(.+?)\]/);
-if (notifyMatch) {
-  const staffName = notifyMatch[1];
-  const notifyMessage = notifyMatch[2];
-  reply = reply.replace(/\[NOTIFY:.+?\]/, '').trim();
+    const notifyMatch = reply.match(/\[NOTIFY:(.+?):(.+?)\]/);
+    if (notifyMatch) {
+      const staffName = notifyMatch[1];
+      const notifyMessage = notifyMatch[2];
+      reply = reply.replace(/\[NOTIFY:.+?\]/, '').trim();
 
-  // 担当者名からメールアドレスを検索
-  let targetEmail = notifyEmail;
-  if (staffInfo) {
-    const staffList = staffInfo.split(',');
-    const found = staffList.find((s: string) => s.startsWith(staffName));
-    if (found) targetEmail = found.split(':')[1];
-  }
+      let targetEmail = notifyEmail;
+      if (staffInfo) {
+        const staffList = staffInfo.split(',');
+        const found = staffList.find((s: string) => s.startsWith(staffName));
+        if (found) targetEmail = found.split(':')[1];
+      }
 
-  try {
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : 'http://localhost:3000';
-    await fetch(`${baseUrl}/api/notify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: notifyMessage,
-        company: companyName,
-        notifyEmail: targetEmail,
-      }),
-    });
-  } catch (e) {
-    console.error('通知エラー:', e);
-  }
-}
+      try {
+        const baseUrl = process.env.VERCEL_URL
+          ? `https://${process.env.VERCEL_URL}`
+          : 'http://localhost:3000';
+        await fetch(`${baseUrl}/api/notify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: notifyMessage,
+            company: companyName,
+            notifyEmail: targetEmail,
+          }),
+        });
+      } catch (e) {
+        console.error('通知エラー:', e);
+      }
+    }
 
-return res.status(200).json({ reply });
+    return res.status(200).json({ reply });
   } catch (error) {
     console.error('APIエラー:', error);
     return res.status(500).json({ reply: '通信エラーが発生しました' });

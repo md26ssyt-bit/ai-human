@@ -9,14 +9,18 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@pdf-lib/fontkit": "^1.1.1",
     "@pixiv/three-vrm": "^3.4.5",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
     "@supabase/supabase-js": "^2.105.1",
+    "@tensorflow-models/coco-ssd": "^2.2.3",
+    "@tensorflow/tfjs": "^4.22.0",
     "@types/nodemailer": "^8.0.0",
     "next": "16.1.6",
     "next-auth": "^4.24.14",
     "nodemailer": "^7.0.13",
+    "pdf-lib": "^1.17.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "three": "^0.182.0"

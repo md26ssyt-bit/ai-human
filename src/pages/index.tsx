@@ -32,7 +32,7 @@ export default function Home() {
         zIndex: 100,
         boxSizing: "border-box"
       }}>
-        <div style={{ fontWeight: "bold", fontSize: "20px" }}>Digital Signage Lab.</div>
+        <div style={{ fontWeight: "bold", fontSize: "20px" }}>Digkio Lab.</div>
         <a href="/login" style={{
           background: "#1a1a2e",
           color: "white",
@@ -239,8 +239,8 @@ export default function Home() {
         padding: "40px",
         textAlign: "center"
       }}>
-        <div style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "16px" }}>Digital Signage Lab.</div>
-        <p style={{ opacity: 0.6, fontSize: "14px" }}>© 2026 Digital Signage Lab. All rights reserved.</p>
+        <div style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "16px" }}>Digital Kiosk Lab.</div>
+        <p style={{ opacity: 0.6, fontSize: "14px" }}>© 2026 Digkio Lab. All rights reserved.</p>
       </footer>
 
     </div>
