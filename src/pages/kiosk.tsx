@@ -440,6 +440,8 @@ useEffect(() => {
 useEffect(() => {
   if (isPersonDetected && greeting) {
     console.log("挨拶発動:", greeting);
+    // 前の音声を止める
+    isSpeakingRef.current = false;
     setTimeout(() => {
       speakDirectly(greeting);
     }, 1000);
