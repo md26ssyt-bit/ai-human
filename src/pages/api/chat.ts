@@ -75,7 +75,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const data = await response.json();
     const rawText =
       data.candidates?.[0]?.content?.parts?.[0]?.text ?? '少しお待ちください';
-
+console.log("rawText:", rawText);  // ← 追加
     let reply = rawText
       .replace(/^reply[:：\s]*/i, '')
       .replace(/^回答[:：\s]*/i, '')
