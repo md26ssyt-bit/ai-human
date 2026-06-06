@@ -417,9 +417,13 @@ if (callMatch) {
       sendMessage(text);
     };
     recognition.onend = () => {
-      if (!isSpeakingRef.current) try { recognition.start(); } catch (e) {}
-    };
-    recognition.start();
+  console.log("recognition ended, restarting...");
+  if (!isSpeakingRef.current) try { recognition.start(); } catch (e) {}
+};
+recognition.onstart = () => {
+  console.log("recognition started!");
+};
+recognition.start();
   }, []);
   useEffect(() => {
   const init = async () => {
