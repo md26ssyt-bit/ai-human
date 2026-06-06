@@ -372,6 +372,7 @@ const startDetection = () => {
 
  // --- AIに送信 ---
 const sendMessage = async (text: string, emailOverride?: string) => {
+  console.log("sendMessage called:", text);  // ← 追加
   if (!text) return;
   setMessages(prev => [...prev, { role: "user", text }]);
   try {
