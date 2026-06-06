@@ -29,9 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (data?.notify_email) notifyEmail = data.notify_email;
       if (data?.company_name) companyName = data.company_name;
       if (data?.id) customerId = data.id;
-      if (data?.greeting) {
-        systemPrompt = `${systemPrompt}\n最初の挨拶は必ず「${data.greeting}」から始めてください。`;
-      }
+     
       console.log("systemPrompt:", systemPrompt);
       console.log("greeting:", data?.greeting);
 
