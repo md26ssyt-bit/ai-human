@@ -271,6 +271,7 @@ const initDetector = async () => {
 };
 // カメラ起動
 const startCamera = async () => {
+  console.log("startCamera called");  // ← 追加
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
     if (videoRef.current) {
