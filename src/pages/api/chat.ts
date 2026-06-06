@@ -97,7 +97,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       try {
-        const baseUrl = process.env.VERCEL_URL
+        const baseUrl = 'https://ai-human-eta.vercel.app';
           ? `https://${process.env.VERCEL_URL}`
           : 'http://localhost:3000';
         await fetch(`${baseUrl}/api/notify`, {

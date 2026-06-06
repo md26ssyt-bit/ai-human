@@ -201,6 +201,7 @@ if (typeof window !== 'undefined' && !(window as any).mouthState) {
 }
   const sendMessageRef = useRef<((text: string, emailOverride?: string) => void) | null>(null);
   const isPersonDetectedRef = useRef(false);
+  const hasGreetedRef = useRef(false);  // ← ここに追加
   const [callButton, setCallButton] = useState<{name: string, phone: string} | null>(null);
   const [isPersonDetected, setIsPersonDetected] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -438,13 +439,16 @@ useEffect(() => {
 });
 
 useEffect(() => {
-  if (isPersonDetected && greeting) {
+  if (isPersonDetected && greeting && !hasGreetedRef.current) {
+    hasGreetedRef.current = true;
     console.log("挨拶発動:", greeting);
-    // 前の音声を止める
     isSpeakingRef.current = false;
     setTimeout(() => {
       speakDirectly(greeting);
     }, 1000);
+  }
+  if (!isPersonDetected) {
+    hasGreetedRef.current = false;  // 離れたらリセット
   }
 }, [isPersonDetected, greeting]);
  if (!isReady) return (
