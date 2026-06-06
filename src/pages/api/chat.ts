@@ -95,20 +95,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       try {
-        const baseUrl = 'https://ai-human-eta.vercel.app';
-          ? `https://${process.env.VERCEL_URL}`
-          : 'http://localhost:3000';
-        await fetch(`${baseUrl}/api/notify`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message: notifyMessage,
-            company: companyName,
-            notifyEmail: targetEmail,
-          }),
-        });
-      } catch (e) {
-        console.error('通知エラー:', e);
+       const baseUrl = 'https://ai-human-eta.vercel.app';
+  await fetch(`${baseUrl}/api/notify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message: notifyMessage,
+      company: companyName,
+      notifyEmail: targetEmail,
+    }),
+  });
+} catch (e) {
+  console.error('通知エラー:', e);
       }
     }
 
