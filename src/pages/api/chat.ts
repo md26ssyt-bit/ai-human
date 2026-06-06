@@ -13,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { message, email } = req.body;
     const apiKey = process.env.GEMINI_API_KEY;
 
-    let systemPrompt = 'あなたは企業受付AIです。丁寧にお客様をご案内してください。';
+    let systemPrompt = 'あなたは企業受付AIです。丁寧にお客様をご案内してください。挨拶は絶対にしないでください。質問に簡潔に答えてください。';
     let notifyEmail = process.env.NOTIFY_EMAIL;
     let companyName = '不明';
     let staffInfo = '';
