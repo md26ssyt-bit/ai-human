@@ -13,7 +13,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 // Avatar
 // ======================
 
-function Avatar({ vrmUrl }: { vrmUrl: string }) {
+function Avatar({ vrmUrl, emotion = 'neutral' }: { vrmUrl: string, emotion?: string }) {
 const mouthState = useRef({
   speaking: false,
   value: 0,
@@ -98,7 +98,12 @@ useFrame((_, delta) => {
 
     vrm.expressionManager.setValue("blink", blink.value);
     vrm.expressionManager.setValue("aa", mouth.value);
-    vrm.expressionManager.setValue("happy", 0.3);
+    // 感情に応じて表情を切り替え
+vrm.expressionManager.setValue("happy", emotion === 'happy' ? 0.8 : 0);
+vrm.expressionManager.setValue("sad", emotion === 'sad' ? 0.8 : 0);
+vrm.expressionManager.setValue("angry", emotion === 'angry' ? 0.8 : 0);
+vrm.expressionManager.setValue("surprised", emotion === 'surprised' ? 0.8 : 0);
+vrm.expressionManager.setValue("neutral", emotion === 'neutral' ? 0.3 : 0);
 
     vrm.expressionManager.update();
 
@@ -204,6 +209,7 @@ if (typeof window !== 'undefined' && !(window as any).mouthState) {
   const hasGreetedRef = useRef(false);  // ← ここに追加
   const [callButton, setCallButton] = useState<{name: string, phone: string} | null>(null);
   const [isPersonDetected, setIsPersonDetected] = useState(false);
+  const [emotion, setEmotion] = useState('neutral');
   const videoRef = useRef<HTMLVideoElement>(null);
   const detectorRef = useRef<any>(null);
   const detectionTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -390,6 +396,14 @@ const response = await fetch("/api/chat", {
 
     setMessages(prev => [...prev, { role: "ai", text: reply }]);
 // 電話ボタンの検知 [CALL:名前:電話番号]
+// 感情の検知
+const emotionMatch = reply.match(/\[EMOTION:(.+?)\]/);
+if (emotionMatch) {
+  setEmotion(emotionMatch[1]);
+  reply = reply.replace(/\[EMOTION:.+?\]/, '').trim();
+} else {
+  setEmotion('neutral');
+}
 const callMatch = reply.match(/\[CALL:(.+?):(.+?)\]/);
 if (callMatch) {
   setCallButton({ name: callMatch[1], phone: callMatch[2] });
@@ -547,7 +561,7 @@ return (
   >
     <ambientLight intensity={0.7} />
     <directionalLight position={[1, 2, 3]} />
-    <Avatar vrmUrl={vrmUrl} />
+    <Avatar vrmUrl={vrmUrl} emotion={emotion} />
     <OrbitControls target={[0, 1.2, 0]} />
   </Canvas>
 ) : (
