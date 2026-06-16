@@ -39,6 +39,8 @@ useEffect(() => {
   loader.register((parser) => new VRMLoaderPlugin(parser));
   loader.load(vrmUrl, (gltf) => {
     const vrmModel = gltf.userData.vrm as VRM;
+    // 利用可能な表情を確認
+  console.log("expressions:", vrmModel.expressionManager?.expressions.map(e => e.expressionName));
     setVrm(vrmModel);
     setLoading(false);  // ← ここに追加
     // モデル中央補正
