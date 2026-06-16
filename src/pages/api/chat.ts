@@ -58,7 +58,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                text: `${systemPrompt}
 必ず自然な会話文だけを返してください。
 必ず3文以内で簡潔に答えてください。
-返答の最後に必ず感情タグを追加してください。例：[EMOTION:happy] [EMOTION:sad] [EMOTION:angry] [EMOTION:surprised] [EMOTION:neutral]
+返答の文章の最後に必ず[EMOTION:happy]か[EMOTION:sad]か[EMOTION:angry]か[EMOTION:surprised]か[EMOTION:neutral]のどれか1つを付けてください。これは絶対に省略しないでください。
 "reply:" や "回答:" などのラベルは絶対に出力しないでください。
 担当者一覧：${staffInfo || 'なし'}
 もしユーザーが「伝えてください」「連絡してください」「呼んでください」などの伝言を依頼した場合は、返答の最後に必ず「[NOTIFY:担当者名:伝言内容]」という形式で伝言を追加してください。
