@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // メール送信
     await transporter.sendMail({
-      from: process.env.GMAIL_USER,
+  from: `${company}受付 <${process.env.GMAIL_USER}>`,
      to: notifyEmail || process.env.NOTIFY_EMAIL,
       subject: `【AIコンシェルジュ】${company}からの伝言`,
       text: `
