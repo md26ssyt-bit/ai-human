@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
-import { PDFDocument, rgb } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import * as fontkit from '@pdf-lib/fontkit';
 import nodemailer from 'nodemailer';
 import fs from 'fs';
@@ -35,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   pdfDoc.registerFontkit(fontkit);
   const font = await pdfDoc.embedFont(fontBytes);
   const boldFont = await pdfDoc.embedFont(boldFontBytes);
-
+  const englishFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const page = pdfDoc.addPage([595, 842]);
   const { width, height } = page.getSize();
 
@@ -158,7 +158,7 @@ const paymentLink = await stripe.paymentLinks.create({
   page.drawText(`¥${totalWithTax.toLocaleString()}`, { x: 460, y: y - 75, size: 12, font });
   // 決済リンクをPDFに追加
 page.drawText('お支払いはこちらから：', { x: 50, y: y - 220, size: 11, font });
-page.drawText(paymentLink.url, { x: 50, y: y - 238, size: 9, font, color: rgb(0, 0, 0.8) });
+page.drawText(paymentLink.url, { x: 50, y: y - 238, size: 9, font: englishFont, color: rgb(0, 0, 0.8) });
 // 振込先
   page.drawLine({
     start: { x: 50, y: y - 100 },
