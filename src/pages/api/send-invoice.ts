@@ -25,7 +25,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   console.log("invoice:", invoice, "error:", error);
   if (error || !invoice) return res.status(404).json({ error: '請求書が見つかりません' });
+// Stripe決済リンクを作成
+const Stripe = require('stripe');
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+const tax = Math.floor(invoice.total * 0.1);
+const totalWithTax = invoice.total + tax;
+
+const paymentLink = await stripe.paymentLinks.create({
+  line_items: [
+    {
+      price_data: {
+        currency: 'jpy',
+        product_data: {
+          name: `${invoice.company_name}様 ご請求`,
+        },
+        unit_amount: totalWithTax,
+      },
+      quantity: 1,
+    },
+  ],
+});
   const fontPath = path.join(process.cwd(), 'public', 'fonts', 'NotoSansJP-Regular.ttf');
   const boldFontPath = path.join(process.cwd(), 'public', 'fonts', 'PhillySans.otf');
   const fontBytes = fs.readFileSync(fontPath);
@@ -138,6 +158,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   page.drawText(`¥${tax.toLocaleString()}`, { x: 460, y: y - 50, size: 11, font });
   page.drawText('合計:', { x: 370, y: y - 75, size: 12, font });
   page.drawText(`¥${totalWithTax.toLocaleString()}`, { x: 460, y: y - 75, size: 12, font });
+  // 決済リンクをPDFに追加
+page.drawText('お支払いはこちらから：', { x: 50, y: y - 220, size: 11, font });
+page.drawText(paymentLink.url, { x: 50, y: y - 238, size: 9, font, color: rgb(0, 0, 0.8) });
 // 振込先
   page.drawLine({
     start: { x: 50, y: y - 100 },
