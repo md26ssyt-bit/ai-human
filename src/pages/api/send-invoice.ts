@@ -25,27 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   console.log("invoice:", invoice, "error:", error);
   if (error || !invoice) return res.status(404).json({ error: '請求書が見つかりません' });
-// Stripe決済リンクを作成
-const Stripe = require('stripe');
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-const tax = Math.floor(invoice.total * 0.1);
-const totalWithTax = invoice.total + tax;
-
-const paymentLink = await stripe.paymentLinks.create({
-  line_items: [
-    {
-      price_data: {
-        currency: 'jpy',
-        product_data: {
-          name: `${invoice.company_name}様 ご請求`,
-        },
-        unit_amount: totalWithTax,
-      },
-      quantity: 1,
-    },
-  ],
-});
   const fontPath = path.join(process.cwd(), 'public', 'fonts', 'NotoSansJP-Regular.ttf');
   const boldFontPath = path.join(process.cwd(), 'public', 'fonts', 'PhillySans.otf');
   const fontBytes = fs.readFileSync(fontPath);
@@ -152,6 +132,24 @@ const paymentLink = await stripe.paymentLinks.create({
 
   const tax = Math.floor(invoice.total * 0.1);
   const totalWithTax = invoice.total + tax;
+  // Stripe決済リンクを作成
+const Stripe = require('stripe');
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+const paymentLink = await stripe.paymentLinks.create({
+  line_items: [
+    {
+      price_data: {
+        currency: 'jpy',
+        product_data: {
+          name: `${invoice.company_name}様 ご請求`,
+        },
+        unit_amount: totalWithTax,
+      },
+      quantity: 1,
+    },
+  ],
+});
   page.drawText('小計:', { x: 370, y: y - 30, size: 11, font });
   page.drawText(`¥${invoice.total.toLocaleString()}`, { x: 460, y: y - 30, size: 11, font });
   page.drawText('消費税(10%):', { x: 340, y: y - 50, size: 11, font });
