@@ -76,7 +76,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   for (let i = 0; i < texts.length; i++) {
     const textWidth = boldFont.widthOfTextAtSize(texts[i], stampFontSize);
-    const textX = stampX + (stampSize - textWidth) / 2-7;
+    const textX = stampX + (stampSize - textWidth) / 2-2;
     const offset = i === 1 ? 1 : 0;  // 真ん中だけ下げる
     const textY = stampY - lineHeight * (i + 1) -10+ offset;
     page.drawText(texts[i], {
