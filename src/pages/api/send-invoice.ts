@@ -67,7 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     width: stampSize, height: stampSize,
     borderColor: rgb(0.85, 0, 0),
     borderWidth: 3,
-    opacity: 0
+    opacity: 0.5
   });
 
   const texts = ['DIG', 'KIO', 'LAB'];
@@ -76,12 +76,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   for (let i = 0; i < texts.length; i++) {
     const textWidth = boldFont.widthOfTextAtSize(texts[i], stampFontSize);
-    const textX = stampX + (stampSize - textWidth) / 2;
+    const textX = stampX + (stampSize - textWidth) / 2-20;
     const offset = i === 1 ? 1 : 0;  // 真ん中だけ下げる
     const textY = stampY - lineHeight * (i + 1) -10+ offset;
     page.drawText(texts[i], {
       x: textX, y: textY,
-      size: stampFontSize, font: boldFont, color: rgb(0.85, 0, 0)
+      size: stampFontSize, font: boldFont, color: rgb(0.85, 0, 0),
+      opacity: 0.5  // ← 追加（0〜1、小さいほど薄い）
     });
   }
   page.drawText(`宛先: ${invoice.company_name} 様`, {
@@ -157,7 +158,8 @@ const paymentLink = await stripe.paymentLinks.create({
   page.drawText('合計:', { x: 370, y: y - 75, size: 12, font });
   page.drawText(`¥${totalWithTax.toLocaleString()}`, { x: 460, y: y - 75, size: 12, font });
   // 決済リンクをPDFに追加
-page.drawText('お支払いはこちらから：', { x: 50, y: y - 220, size: 11, font });
+page.drawText('カードで
+  お支払いはこちらから：', { x: 50, y: y - 220, size: 11, font });
 page.drawText(paymentLink.url, { x: 50, y: y - 238, size: 9, font: englishFont, color: rgb(0, 0, 0.8) });
 // 振込先
   page.drawLine({
