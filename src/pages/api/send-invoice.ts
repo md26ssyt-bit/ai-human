@@ -158,8 +158,7 @@ const paymentLink = await stripe.paymentLinks.create({
   page.drawText('合計:', { x: 370, y: y - 75, size: 12, font });
   page.drawText(`¥${totalWithTax.toLocaleString()}`, { x: 460, y: y - 75, size: 12, font });
   // 決済リンクをPDFに追加
-page.drawText('カードで
-  お支払いはこちらから：', { x: 50, y: y - 220, size: 11, font });
+page.drawText('カードでお支払いはこちらから：', { x: 50, y: y - 220, size: 11, font });
 page.drawText(paymentLink.url, { x: 50, y: y - 238, size: 9, font: englishFont, color: rgb(0, 0, 0.8) });
 // 振込先
   page.drawLine({
