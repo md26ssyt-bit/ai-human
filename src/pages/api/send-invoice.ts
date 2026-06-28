@@ -67,7 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     width: stampSize, height: stampSize,
     borderColor: rgb(0.85, 0, 0),
     borderWidth: 3,
-    opacity: 0.5
+    opacity: 0.8
   });
 
   const texts = ['DIG', 'KIO', 'LAB'];
@@ -76,13 +76,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   for (let i = 0; i < texts.length; i++) {
     const textWidth = boldFont.widthOfTextAtSize(texts[i], stampFontSize);
-    const textX = stampX + (stampSize - textWidth) / 2-20;
+    const textX = stampX + (stampSize - textWidth) / 2-10;
     const offset = i === 1 ? 1 : 0;  // 真ん中だけ下げる
     const textY = stampY - lineHeight * (i + 1) -10+ offset;
     page.drawText(texts[i], {
       x: textX, y: textY,
       size: stampFontSize, font: boldFont, color: rgb(0.85, 0, 0),
-      opacity: 0.5  // ← 追加（0〜1、小さいほど薄い）
+      opacity: 0.8  // ← 追加（0〜1、小さいほど薄い）
     });
   }
   page.drawText(`宛先: ${invoice.company_name} 様`, {
