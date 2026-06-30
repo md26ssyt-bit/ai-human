@@ -245,6 +245,12 @@ setIsReady(true);
 const mySessionId = localStorage.getItem('mySessionId');
 console.log("mySessionId:", mySessionId);
 setInterval(async () => {
+  console.log("session_updated_at更新中...");  // ← 追加
+  await supabase
+    .from('customers')
+    .update({ session_updated_at: new Date().toISOString() })
+    .eq('email', userEmail);
+}, 5000);
   const { data: check } = await supabase
     .from('customers')
     .select('session_id')
