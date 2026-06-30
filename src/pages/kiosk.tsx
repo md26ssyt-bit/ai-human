@@ -241,6 +241,20 @@ if (customer?.vrm_url) setVrmUrl(customer.vrm_url);
 if (customer?.company_name) setCompanyName(customer.company_name);
 if (customer?.greeting) setGreeting(customer.greeting);  // ← 追加
 setIsReady(true);
+// セッションチェック開始
+const mySessionId = localStorage.getItem('mySessionId');
+setInterval(async () => {
+  const { data: check } = await supabase
+    .from('customers')
+    .select('session_id')
+    .eq('email', userEmail)
+    .single();
+  if (check?.session_id && check.session_id !== mySessionId) {
+    alert('他のデバイスでログインされたため、ログアウトします');
+    await supabase.auth.signOut();
+    router.push('/login');
+  }
+}, 10000); // 10秒ごとにチェック
 const emailForGreeting = userEmail;
 const greetingText = customer?.greeting || "こんにちは";
 

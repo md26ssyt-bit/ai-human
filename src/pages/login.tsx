@@ -9,17 +9,23 @@ export default function Login() {
   const [error, setError] = useState("");
 
   const handleLogin = async () => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) {
-      setError("メールアドレスまたはパスワードが違います");
-    } else {
-      router.push("/kiosk")
-    }
-  };
-
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+  if (error) {
+    setError("メールアドレスまたはパスワードが違います");
+  } else {
+    // 新しいセッションIDを生成して保存
+    const newSessionId = crypto.randomUUID();
+    localStorage.setItem('mySessionId', newSessionId);
+    await supabase
+      .from('customers')
+      .update({ session_id: newSessionId })
+      .eq('email', email);
+    router.push("/kiosk");
+  }
+};
  return (
   <div style={{
     display: "flex",
