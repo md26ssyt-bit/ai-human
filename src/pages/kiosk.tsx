@@ -258,7 +258,13 @@ setInterval(async () => {
 }, 10000); // 10秒ごとにチェック
 const emailForGreeting = userEmail;
 const greetingText = customer?.greeting || "こんにちは";
-
+// 5秒ごとにsession_updated_atを更新
+setInterval(async () => {
+  await supabase
+    .from('customers')
+    .update({ session_updated_at: new Date().toISOString() })
+    .eq('email', userEmail);
+}, 5000);
   // 自動挨拶
  
 }

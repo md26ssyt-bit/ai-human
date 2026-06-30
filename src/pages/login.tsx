@@ -8,7 +8,23 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const handleLogin = async () => {
+ const handleLogin = async () => {
+  // 既存セッションをチェック
+  const { data: existingCustomer } = await supabase
+    .from('customers')
+    .select('session_id, session_updated_at')
+    .eq('email', email)
+    .single();
+
+  if (existingCustomer?.session_updated_at) {
+    const lastUpdate = new Date(existingCustomer.session_updated_at).getTime();
+    const now = Date.now();
+    if (now - lastUpdate < 15000) {
+      setError("他のデバイスで使用中のため、ログインできません");
+      return;
+    }
+  }
+
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
@@ -16,7 +32,6 @@ export default function Login() {
   if (error) {
     setError("メールアドレスまたはパスワードが違います");
   } else {
-    // 新しいセッションIDを生成して保存
     const newSessionId = crypto.randomUUID();
     localStorage.setItem('mySessionId', newSessionId);
     await supabase
