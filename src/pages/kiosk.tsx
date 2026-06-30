@@ -244,13 +244,7 @@ setIsReady(true);
 // セッションチェック開始
 const mySessionId = localStorage.getItem('mySessionId');
 console.log("mySessionId:", mySessionId);
-setInterval(async () => {
-  console.log("session_updated_at更新中...");  // ← 追加
-  await supabase
-    .from('customers')
-    .update({ session_updated_at: new Date().toISOString() })
-    .eq('email', userEmail);
-}, 5000);
+
   const { data: check } = await supabase
     .from('customers')
     .select('session_id')
@@ -266,6 +260,7 @@ const emailForGreeting = userEmail;
 const greetingText = customer?.greeting || "こんにちは";
 // 5秒ごとにsession_updated_atを更新
 setInterval(async () => {
+   console.log("session_updated_at更新中...");  // ← ここに追加
   await supabase
     .from('customers')
     .update({ session_updated_at: new Date().toISOString() })
