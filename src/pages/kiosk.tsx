@@ -244,7 +244,7 @@ setIsReady(true);
 // セッションチェック開始
 const mySessionId = localStorage.getItem('mySessionId');
 console.log("mySessionId:", mySessionId);
-
+setInterval(async () => {  
   const { data: check } = await supabase
     .from('customers')
     .select('session_id')
