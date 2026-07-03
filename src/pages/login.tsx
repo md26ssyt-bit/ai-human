@@ -19,6 +19,9 @@ export default function Login() {
   if (existingCustomer?.session_updated_at) {
     const lastUpdate = new Date(existingCustomer.session_updated_at).getTime();
     const now = Date.now();
+    console.log("lastUpdate:", lastUpdate);
+    console.log("now:", now);
+    console.log("差分(ms):", now - lastUpdate);
     if (now - lastUpdate < 8000) {
       setError("他のデバイスで使用中のため、ログインできません");
       return;
