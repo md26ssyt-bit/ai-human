@@ -17,7 +17,7 @@ export default function Login() {
     .single();
 
   if (existingCustomer?.session_updated_at) {
-    const lastUpdate = new Date(existingCustomer.session_updated_at).getTime();
+   const lastUpdate = new Date(existingCustomer.session_updated_at + 'Z').getTime();
     const now = Date.now();
     console.log("lastUpdate:", lastUpdate);
     console.log("now:", now);
