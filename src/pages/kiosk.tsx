@@ -440,6 +440,28 @@ if (callMatch) {
     for (const sentence of sentences) {
       if (sentence.trim()) speak(sentence.trim());
     }
+    // ログを記録
+const { data: customerData } = await supabase
+  .from('customers')
+  .select('sheet_id, company_name')
+  .eq('email', email)
+  .single();
+
+if (customerData?.sheet_id) {
+  await fetch('/api/log-visit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sheetId: customerData.sheet_id,
+      messages: [
+        { role: 'user', text },
+        { role: 'ai', text: reply }
+      ],
+      companyName: customerData.company_name,
+      email,
+    }),
+  });
+}
   } catch (error) {
     console.error("APIエラー:", error);
   }

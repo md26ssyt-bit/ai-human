@@ -118,9 +118,9 @@ export default function Home() {
           margin: "0 auto 80px"
         }}>
           {[
-            { name: "ベーシック", price: "178,000", desc: "小規模オフィス向け" },
-            { name: "スタンダード", price: "248,000", desc: "中規模オフィス向け", popular: true },
-            { name: "プレミアム", price: "298,000", desc: "大規模オフィス向け" },
+            { name: "ベーシック(15.6インチ", price: "178,000", desc: "小規模オフィス向け" },
+            { name: "スタンダード(18.5インチ）", price: "248,000", desc: "中規模オフィス向け", popular: true },
+            { name: "プレミアム(21.5インチ）", price: "298,000", desc: "大規模オフィス向け" },
           ].map((plan, i) => (
             <div key={i} style={{
               background: plan.popular ? "#1a1a2e" : "white",
@@ -239,7 +239,7 @@ export default function Home() {
         padding: "40px",
         textAlign: "center"
       }}>
-        <div style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "16px" }}>Digital Kiosk Lab.</div>
+        <div style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "16px" }}>DigKio Lab.</div>
         <p style={{ opacity: 0.6, fontSize: "14px" }}>© 2026 Digkio Lab. All rights reserved.</p>
       </footer>
 

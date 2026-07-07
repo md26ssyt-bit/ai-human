@@ -23,6 +23,7 @@ export default function Admin() {
   const [staffPhone, setStaffPhone] = useState(""); 
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [voiceName, setVoiceName] = useState('ja-JP-Neural2-B');
+  const [sheetId, setSheetId] = useState('');
   const [invoiceCustomerId, setInvoiceCustomerId] = useState("");
   const [invoiceItems, setInvoiceItems] = useState([{ name: "", quantity: 1, price: 0 }]);
   const [issueDate, setIssueDate] = useState("");
@@ -61,6 +62,7 @@ export default function Admin() {
       notify_email: notifyEmail,
       greeting: greeting,
       voice_name: voiceName, 
+      sheet_id: sheetId,
       created_at: new Date().toISOString(),
     });
     fetchCustomers();
@@ -175,7 +177,8 @@ const sendInvoice = async () => {
         <textarea placeholder="AIへの指示文（プロンプト）" value={prompt} onChange={e => setPrompt(e.target.value)} style={{ padding: "8px", height: "100px" }} />
         <input placeholder="VRMファイルのURL" value={vrmUrl} onChange={e => setVrmUrl(e.target.value)} style={{ padding: "8px" }} />
         <input placeholder="通知先メールアドレス" value={notifyEmail} onChange={e => setNotifyEmail(e.target.value)} style={{ padding: "8px" }} />
-        <input placeholder="最初の挨拶文" value={greeting} onChange={e => setGreeting(e.target.value)} style={{ padding: "8px" }} />
+        <input placeholder="最初の挨拶文" value={greeting} onChange={e => setGreeting(e.target.value)} style={{ padding: "8px" }}
+         <input placeholder="Google Sheets ID" value={sheetId} onChange={e => setSheetId(e.target.value)} style={{ padding: "8px" }} />/>
         <select value={voiceName} onChange={e => setVoiceName(e.target.value)} style={{ padding: "8px" }}>
         <option value="ja-JP-Neural2-B">女性A（落ち着いた）</option>
         <option value="ja-JP-Neural2-C">男性A（低め）</option>
