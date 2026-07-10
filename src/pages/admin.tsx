@@ -24,6 +24,7 @@ export default function Admin() {
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [voiceName, setVoiceName] = useState('ja-JP-Neural2-B');
   const [sheetId, setSheetId] = useState('');
+  const [editingCustomer, setEditingCustomer] = useState<any>(null);
   const [invoiceCustomerId, setInvoiceCustomerId] = useState("");
   const [invoiceItems, setInvoiceItems] = useState([{ name: "", quantity: 1, price: 0 }]);
   const [issueDate, setIssueDate] = useState("");
@@ -78,7 +79,23 @@ export default function Admin() {
     await supabase.from("customers").delete().eq("id", id);
     fetchCustomers();
   };
-
+const updateCustomer = async () => {
+  if (!editingCustomer) return;
+  await supabase
+    .from('customers')
+    .update({
+      company_name: editingCustomer.company_name,
+      prompt: editingCustomer.prompt,
+      vrm_url: editingCustomer.vrm_url,
+      notify_email: editingCustomer.notify_email,
+      greeting: editingCustomer.greeting,
+      voice_name: editingCustomer.voice_name,
+      sheet_id: editingCustomer.sheet_id,
+    })
+    .eq('id', editingCustomer.id);
+  setEditingCustomer(null);
+  fetchCustomers();
+};
   const addStaff = async () => {
     if (!selectedCustomerId || !staffName || !staffEmail) return;
     await fetch('/api/staff', {
@@ -193,28 +210,56 @@ const sendInvoice = async () => {
       </div>
 
       <h2>お客様一覧</h2>
-      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "40px" }}>
-        <thead>
-          <tr style={{ background: "#f0f0f0" }}>
-            <th style={{ padding: "8px", border: "1px solid #ddd" }}>メール</th>
-            <th style={{ padding: "8px", border: "1px solid #ddd" }}>会社名</th>
-            <th style={{ padding: "8px", border: "1px solid #ddd" }}>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          {customers.map(customer => (
-            <tr key={customer.id}>
-              <td style={{ padding: "8px", border: "1px solid #ddd" }}>{customer.email}</td>
-              <td style={{ padding: "8px", border: "1px solid #ddd" }}>{customer.company_name}</td>
-              <td style={{ padding: "8px", border: "1px solid #ddd" }}>
-                <button onClick={() => deleteCustomer(customer.id, customer.email)} style={{ padding: "4px 8px", background: "red", color: "white", cursor: "pointer" }}>
-                  削除
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+{editingCustomer && (
+  <div style={{ background: "#f9f9f9", padding: "20px", marginBottom: "20px", border: "1px solid #ddd" }}>
+    <h3>編集中：{editingCustomer.email}</h3>
+    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+      <input placeholder="会社名" value={editingCustomer.company_name || ''} onChange={e => setEditingCustomer({...editingCustomer, company_name: e.target.value})} style={{ padding: "8px" }} />
+      <textarea placeholder="プロンプト" value={editingCustomer.prompt || ''} onChange={e => setEditingCustomer({...editingCustomer, prompt: e.target.value})} style={{ padding: "8px", height: "100px" }} />
+      <input placeholder="VRM URL" value={editingCustomer.vrm_url || ''} onChange={e => setEditingCustomer({...editingCustomer, vrm_url: e.target.value})} style={{ padding: "8px" }} />
+      <input placeholder="通知先メール" value={editingCustomer.notify_email || ''} onChange={e => setEditingCustomer({...editingCustomer, notify_email: e.target.value})} style={{ padding: "8px" }} />
+      <input placeholder="挨拶文" value={editingCustomer.greeting || ''} onChange={e => setEditingCustomer({...editingCustomer, greeting: e.target.value})} style={{ padding: "8px" }} />
+      <input placeholder="Google Sheets ID" value={editingCustomer.sheet_id || ''} onChange={e => setEditingCustomer({...editingCustomer, sheet_id: e.target.value})} style={{ padding: "8px" }} />
+      <select value={editingCustomer.voice_name || 'ja-JP-Neural2-B'} onChange={e => setEditingCustomer({...editingCustomer, voice_name: e.target.value})} style={{ padding: "8px" }}>
+        <option value="ja-JP-Neural2-B">女性A（落ち着いた）</option>
+        <option value="ja-JP-Neural2-C">男性A（低め）</option>
+        <option value="ja-JP-Neural2-D">男性B（明るい）</option>
+        <option value="ja-JP-Neural2-F">女性B（明るい）</option>
+        <option value="ja-JP-Wavenet-A">女性C（自然）</option>
+        <option value="ja-JP-Wavenet-B">男性C（自然）</option>
+      </select>
+      <div style={{ display: "flex", gap: "10px" }}>
+        <button onClick={updateCustomer} style={{ padding: "10px", background: "black", color: "white", cursor: "pointer" }}>保存</button>
+        <button onClick={() => setEditingCustomer(null)} style={{ padding: "10px", background: "#666", color: "white", cursor: "pointer" }}>キャンセル</button>
+      </div>
+    </div>
+  </div>
+)}
+<table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "40px" }}>
+  <thead>
+    <tr style={{ background: "#f0f0f0" }}>
+      <th style={{ padding: "8px", border: "1px solid #ddd" }}>メール</th>
+      <th style={{ padding: "8px", border: "1px solid #ddd" }}>会社名</th>
+      <th style={{ padding: "8px", border: "1px solid #ddd" }}>操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    {customers.map(customer => (
+      <tr key={customer.id}>
+        <td style={{ padding: "8px", border: "1px solid #ddd" }}>{customer.email}</td>
+        <td style={{ padding: "8px", border: "1px solid #ddd" }}>{customer.company_name}</td>
+        <td style={{ padding: "8px", border: "1px solid #ddd" }}>
+          <button onClick={() => setEditingCustomer(customer)} style={{ padding: "4px 8px", background: "blue", color: "white", cursor: "pointer", marginRight: "4px" }}>
+            編集
+          </button>
+          <button onClick={() => deleteCustomer(customer.id, customer.email)} style={{ padding: "4px 8px", background: "red", color: "white", cursor: "pointer" }}>
+            削除
+          </button>
+        </td>
+      </tr>
+    ))}
+  </tbody>
+</table>
 
       <h2>担当者を追加</h2>
       <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "40px" }}>
