@@ -6,7 +6,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const { sheetId, messages, companyName, email } = req.body;
-
+　　console.log("sheetId:", sheetId);  // ← 追加
+    console.log("messages:", messages);  // ← 追加
     if (!sheetId) return res.status(400).json({ error: 'sheetIdが必要です' });
 
     const auth = new google.auth.GoogleAuth({
