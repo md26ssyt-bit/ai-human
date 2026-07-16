@@ -5,7 +5,7 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>AIアバター受付キオスク | Digital Kiosk Lab.</title>
+        <title>AIアバター受付キオスク | Digkio Lab.</title>
         <meta name="description" content="3Dアバターが来訪者をお迎えし、自然な会話でご案内する無人受付システム" />
         <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
       </Head>
@@ -354,8 +354,8 @@ export default function Home() {
 
       {/* フッター */}
       <footer>
-        <div className="footer-logo">Digital Kiosk Lab.</div>
-        <div className="footer-copy">© 2026 Digital Kiosk Lab. All rights reserved.</div>
+        <div className="footer-logo">Digkio Lab.</div>
+        <div className="footer-copy">© 2026 Digkio Lab. All rights reserved.</div>
       </footer>
     </>
   );
