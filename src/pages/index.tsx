@@ -195,7 +195,7 @@ export default function Home() {
 
       {/* ナビ */}
       <nav>
-        <a href="/" className="nav-logo">Digital Kiosk Lab.</a>
+        <a href="/" className="nav-logo">Digkio Lab.</a>
         <div className="nav-links">
           <a href="#features">機能</a>
           <a href="#flow">導入の流れ</a>
