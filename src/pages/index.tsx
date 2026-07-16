@@ -346,9 +346,7 @@ export default function Home() {
             導入の流れや料金について、お気軽にご相談ください。
             貴社の受付環境に合わせたご提案をいたします。
           </p>
-          <div className="cta-actions">
-            <a href="mailto:md26ssyt@gmail.com" className="btn-primary">メールでお問い合わせ</a>
-          </div>
+          
         </div>
       </div>
 {/* お問い合わせフォーム */}
