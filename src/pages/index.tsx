@@ -351,7 +351,45 @@ export default function Home() {
           </div>
         </div>
       </div>
-
+{/* お問い合わせフォーム */}
+<div id="contact" style={{ background: '#f7f7f7', padding: '100px 40px' }}>
+  <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+    <p className="section-eyebrow">Contact</p>
+    <h2 className="section-title">お問い合わせ</h2>
+    <form
+      onSubmit={async (e) => {
+        e.preventDefault();
+        const form = e.target as HTMLFormElement;
+        const data = {
+          company: (form.elements.namedItem('company') as HTMLInputElement).value,
+          name: (form.elements.namedItem('name') as HTMLInputElement).value,
+          phone: (form.elements.namedItem('phone') as HTMLInputElement).value,
+          email: (form.elements.namedItem('email') as HTMLInputElement).value,
+          message: (form.elements.namedItem('message') as HTMLTextAreaElement).value,
+        };
+        const res = await fetch('/api/contact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        if (res.ok) {
+          alert('お問い合わせを受け付けました。ありがとうございます。');
+          form.reset();
+        } else {
+          alert('送信に失敗しました。もう一度お試しください。');
+        }
+      }}
+      style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
+    >
+      <input name="company" placeholder="会社名 *" required style={{ padding: '12px 16px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '14px' }} />
+      <input name="name" placeholder="担当者名 *" required style={{ padding: '12px 16px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '14px' }} />
+      <input name="phone" placeholder="電話番号 *" required style={{ padding: '12px 16px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '14px' }} />
+      <input name="email" type="email" placeholder="メールアドレス *" required style={{ padding: '12px 16px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '14px' }} />
+      <textarea name="message" placeholder="お問い合わせ内容 *" required rows={5} style={{ padding: '12px 16px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '14px', resize: 'vertical' }} />
+      <button type="submit" className="btn-primary" style={{ alignSelf: 'flex-start' }}>送信する</button>
+    </form>
+  </div>
+</div>
       {/* フッター */}
       <footer>
         <div className="footer-logo">Digkio Lab.</div>
