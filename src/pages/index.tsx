@@ -309,7 +309,7 @@ export default function Home() {
           <div className="solution-grid">
             <div className="solution-visual" style={{padding: '0', overflow: 'hidden'}}>
   <video
-    src="/video Project 1.mp4"
+    src="/Video Project 1.mp4"
     autoPlay
     muted
     loop
