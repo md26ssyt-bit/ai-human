@@ -51,14 +51,14 @@ export default function Home() {
         .nav-btn { background: #1a1a1a; color: #fff; padding: 8px 18px; border-radius: 6px; font-size: 13px; font-weight: 500; text-decoration: none; }
 
         /* ヒーロー */
-        .hero {
-          padding: 120px 5% 80px;
-          min-height: 100vh;
-          display: flex; align-items: center;
-          background: linear-gradient(160deg, #fff 55%, #f3f3f3 100%);
-          gap: 60px;
+       .hero {
+         padding: 120px 5% 80px;
+         min-height: 100vh;
+         display: flex; align-items: center; justify-content: center;
+         background: linear-gradient(160deg, #fff 55%, #f3f3f3 100%);
+         text-align: center;
         }
-        .hero-left { flex: 1; max-width: 580px; }
+        .hero-left { flex: 1; max-width: 700px; }
         .hero-badge {
           display: inline-block; background: #1a1a1a; color: #fff;
           font-size: 11px; font-weight: 700; letter-spacing: 0.15em;
