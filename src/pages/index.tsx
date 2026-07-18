@@ -253,7 +253,8 @@ export default function Home() {
           <div className="hero-btns">
             <a href="#contact" className="btn-black">今すぐ相談する（無料）</a>
             <a href="#features" className="btn-outline">機能を見る</a>
-          </div>
+           </div>
+           </div>
                </section>
 
       {/* 問題提起 */}
