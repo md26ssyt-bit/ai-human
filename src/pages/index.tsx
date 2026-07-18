@@ -254,12 +254,7 @@ export default function Home() {
             <a href="#contact" className="btn-black">今すぐ相談する（無料）</a>
             <a href="#features" className="btn-outline">機能を見る</a>
           </div>
-        </div>
-        
-            </div>
-          </div>
-        </div>
-      </section>
+               </section>
 
       {/* 問題提起 */}
       <section className="problem" id="problem">
