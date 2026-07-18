@@ -26,7 +26,7 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>AIアバター受付キオスク | Digital Kiosk Lab.</title>
+        <title>AIアバター受付キオスク | Digkio Lab.</title>
         <meta name="description" content="人手不足の受付を、AIアバターが笑顔でサポート。中小企業向け無人受付システム。" />
         <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&display=swap" rel="stylesheet" />
       </Head>
@@ -224,7 +224,7 @@ export default function Home() {
 
       {/* ナビ */}
       <nav className="nav">
-        <a href="/" className="nav-logo">Digital Kiosk Lab.</a>
+        <a href="/" className="nav-logo">Digkio Lab.</a>
         <div className="nav-right">
           <a href="#features" className="nav-link">機能</a>
           <a href="#pricing" className="nav-link">料金</a>
@@ -307,9 +307,16 @@ export default function Home() {
           <p className="sec-label">Solution</p>
           <h2 className="sec-h2">AIアバターが<br />すべて解決します</h2>
           <div className="solution-grid">
-            <div className="solution-visual">
-              <div className="solution-icon">🤖</div>
-              <p className="solution-caption">
+            <div className="solution-visual" style={{padding: '0', overflow: 'hidden'}}>
+  <video
+    src="/video Project 1.mp4"
+    autoPlay
+    muted
+    loop
+    playsInline
+    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '16px' }}
+  />
+</div>
                 24時間365日稼働。<br />
                 御社のブランドに合わせた<br />
                 3Dアバターが来訪者をお迎えします。
@@ -514,8 +521,8 @@ export default function Home() {
 
       {/* フッター */}
       <footer>
-        <div className="footer-logo">Digital Kiosk Lab.</div>
-        <div className="footer-copy">© 2026 Digital Kiosk Lab. All rights reserved.</div>
+        <div className="footer-logo">Digkio Lab.</div>
+        <div className="footer-copy">© 2026 Digkio Lab. All rights reserved.</div>
       </footer>
     </>
   );
