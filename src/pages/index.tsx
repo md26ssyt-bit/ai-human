@@ -255,21 +255,7 @@ export default function Home() {
             <a href="#features" className="btn-outline">機能を見る</a>
           </div>
         </div>
-        <div className="hero-right">
-          <div className="hero-card">
-            <div className="avatar-area">
-              <div className="avatar-circle">🤖</div>
-              <p className="avatar-name">AIコンシェルジュ</p>
-            </div>
-            <div className="chat-list">
-              <div className="chat-ai">いらっしゃいませ！本日はどのようなご用件でしょうか？</div>
-              <div className="chat-user">営業の田中さんにお会いしたいのですが。</div>
-              <div className="chat-ai">承知しました。田中へご連絡いたします。少々お待ちください。</div>
-              <div className="chat-ai" style={{background: '#222'}}>
-                <div className="typing">
-                  <span></span><span></span><span></span>
-                </div>
-              </div>
+        
             </div>
           </div>
         </div>
@@ -311,7 +297,6 @@ export default function Home() {
         <video
           src="/Video Project 1.mp4"
           autoPlay
-          muted
           loop
           playsInline
           style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '16px' }}
