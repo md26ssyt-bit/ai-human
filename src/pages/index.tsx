@@ -301,47 +301,55 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 解決策 */}
-      <section className="solution">
-        <div className="solution-inner">
-          <p className="sec-label">Solution</p>
-          <h2 className="sec-h2">AIアバターが<br />すべて解決します</h2>
-          <div className="solution-grid">
-            <div className="solution-visual" style={{padding: '0', overflow: 'hidden'}}>
-  <video
-    src="/Video Project 1.mp4"
-    autoPlay
-    muted
-    loop
-    playsInline
-    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '16px' }}
-  />
-</div>
-              <div className="solution-item">
-                <div className="solution-check">✓</div>
-                <div className="solution-text">
-                  <h4>担当者にリアルタイム通知</h4>
-                  <p>来訪情報をメールで即座に送信。取りこぼしゼロの対応が実現します。</p>
-                </div>
-              </div>
-              <div className="solution-item">
-                <div className="solution-check">✓</div>
-                <div className="solution-text">
-                  <h4>来訪ログを自動で蓄積</h4>
-                  <p>会話内容・来訪日時をGoogle Sheetsに自動記録。業務改善に活用できます。</p>
-                </div>
-              </div>
-              <div className="solution-item">
-                <div className="solution-check">✓</div>
-                <div className="solution-text">
-                  <h4>既存環境にすぐ導入</h4>
-                  <p>タブレットやディスプレイに接続するだけ。大掛かりな工事は不要です。</p>
-                </div>
-              </div>
-            </div>
+  {/* 解決策 */}
+<section className="solution">
+  <div className="solution-inner">
+    <p className="sec-label">Solution</p>
+    <h2 className="sec-h2">AIアバターが<br />すべて解決します</h2>
+    <div className="solution-grid">
+      <div className="solution-visual" style={{padding: '0', overflow: 'hidden'}}>
+        <video
+          src="/Video Project 1.mp4"
+          autoPlay
+          muted
+          loop
+          playsInline
+          style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '16px' }}
+        />
+      </div>
+      <div className="solution-list">
+        <div className="solution-item">
+          <div className="solution-check">✓</div>
+          <div className="solution-text">
+            <h4>自然な会話で用件を把握</h4>
+            <p>AIが来訪者の用件を聞き取り、適切な担当者へ自動で取り次ぎます。</p>
           </div>
         </div>
-      </section>
+        <div className="solution-item">
+          <div className="solution-check">✓</div>
+          <div className="solution-text">
+            <h4>担当者にリアルタイム通知</h4>
+            <p>来訪情報をメールで即座に送信。取りこぼしゼロの対応が実現します。</p>
+          </div>
+        </div>
+        <div className="solution-item">
+          <div className="solution-check">✓</div>
+          <div className="solution-text">
+            <h4>来訪ログを自動で蓄積</h4>
+            <p>会話内容・来訪日時をGoogle Sheetsに自動記録。業務改善に活用できます。</p>
+          </div>
+        </div>
+        <div className="solution-item">
+          <div className="solution-check">✓</div>
+          <div className="solution-text">
+            <h4>既存環境にすぐ導入</h4>
+            <p>タブレットやディスプレイに接続するだけ。大掛かりな工事は不要です。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
       {/* 機能 */}
       <section className="features" id="features">
