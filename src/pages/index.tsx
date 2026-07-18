@@ -317,19 +317,6 @@ export default function Home() {
     style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '16px' }}
   />
 </div>
-                24時間365日稼働。<br />
-                御社のブランドに合わせた<br />
-                3Dアバターが来訪者をお迎えします。
-              </p>
-            </div>
-            <div className="solution-list">
-              <div className="solution-item">
-                <div className="solution-check">✓</div>
-                <div className="solution-text">
-                  <h4>自然な会話で用件を把握</h4>
-                  <p>AIが来訪者の用件を聞き取り、適切な担当者へ自動で取り次ぎます。</p>
-                </div>
-              </div>
               <div className="solution-item">
                 <div className="solution-check">✓</div>
                 <div className="solution-text">
