@@ -290,13 +290,15 @@ export default function Home() {
     <h2 className="sec-h2">AIアバターが<br />すべて解決します</h2>
     <div className="solution-grid">
       <div className="solution-visual" style={{padding: '0', overflow: 'hidden'}}>
-        <video
-          src="/Video Project 1.mp4"
-          autoPlay
-          loop
-          playsInline
-          style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '16px' }}
-        />
+       <video
+  src="/Video Project 1.mp4"
+  autoPlay
+  muted
+  loop
+  playsInline
+  controls
+  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '16px' }}
+/>
       </div>
       <div className="solution-list">
         <div className="solution-item">
