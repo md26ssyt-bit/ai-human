@@ -551,6 +551,13 @@ useEffect(() => {
   </div>
 ); 
 return (
+  <div 
+  style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }}
+  onClick={async () => {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    await ctx.resume();
+  }}
+/>
   <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
     <video ref={videoRef} style={{ display: 'none' }} playsInline muted />
     {/* ログアウトボタン */}
