@@ -211,6 +211,7 @@ if (typeof window !== 'undefined' && !(window as any).mouthState) {
   const hasGreetedRef = useRef(false);  // ← ここに追加
   const [callButton, setCallButton] = useState<{name: string, phone: string} | null>(null);
   const [isPersonDetected, setIsPersonDetected] = useState(false);
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [emotion, setEmotion] = useState('neutral');
   const videoRef = useRef<HTMLVideoElement>(null);
   const detectorRef = useRef<any>(null);
@@ -551,13 +552,28 @@ useEffect(() => {
   </div>
 ); 
 return (
-  <div 
-  style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }}
-  onClick={async () => {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    await ctx.resume();
-  }}
-/>
+ {!audioUnlocked && (
+  <div
+    style={{
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+      zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(0,0,0,0.5)',
+    }}
+    onClick={async () => {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      await ctx.resume();
+      setAudioUnlocked(true);
+      speakDirectly(greeting || 'こんにちは');
+    }}
+  >
+    <div style={{
+      background: '#fff', padding: '40px 60px', borderRadius: '16px',
+      fontSize: '18px', fontWeight: 'bold', textAlign: 'center'
+    }}>
+      タップして開始
+    </div>
+  </div>
+)}
   <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
     <video ref={videoRef} style={{ display: 'none' }} playsInline muted />
     {/* ログアウトボタン */}
