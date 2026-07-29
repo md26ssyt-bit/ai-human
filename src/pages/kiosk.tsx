@@ -552,96 +552,99 @@ useEffect(() => {
   </div>
 ); 
 return (
- {!audioUnlocked && (
-  <div
-    style={{
-      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-      zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'rgba(0,0,0,0.5)',
-    }}
-    onClick={async () => {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      await ctx.resume();
-      setAudioUnlocked(true);
-      speakDirectly(greeting || 'こんにちは');
-    }}
-  >
-    <div style={{
-      background: '#fff', padding: '40px 60px', borderRadius: '16px',
-      fontSize: '18px', fontWeight: 'bold', textAlign: 'center'
-    }}>
-      タップして開始
-    </div>
-  </div>
-)}
-  <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
-    <video ref={videoRef} style={{ display: 'none' }} playsInline muted />
-    {/* ログアウトボタン */}
-    <button
-      onClick={async () => {
-        await supabase.auth.signOut();
-        router.push("/login");
-      }}
-      style={{
-        position: "absolute",
-        top: "16px",
-        right: "16px",
-        zIndex: 10,
-        padding: "8px 16px",
-        background: "rgba(0,0,0,0.5)",
-        color: "white",
-        border: "none",
-        borderRadius: "8px",
-        cursor: "pointer"
-      }}
-    >
-      ログアウト
-    </button>
+  <>
+    {!audioUnlocked && (
+      <div
+        style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(0,0,0,0.5)',
+        }}
+        onClick={async () => {
+          const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+          await ctx.resume();
+          setAudioUnlocked(true);
+          speakDirectly(greeting || 'こんにちは');
+        }}
+      >
+        <div style={{
+          background: '#fff', padding: '40px 60px', borderRadius: '16px',
+          fontSize: '18px', fontWeight: 'bold', textAlign: 'center'
+        }}>
+          タップして開始
+        </div>
+      </div>
+    )}
 
-   {/* 電話ボタン */}
-{callButton && (
-  <div style={{
-    position: "absolute",
-    bottom: "80px",
-    left: "50%",
-    transform: "translateX(-50%)",
-    zIndex: 10,
-    textAlign: "center"
-  }}>
-    <a href={`tel:${callButton.phone}`} style={{
-      display: "block",
-      background: "#2ecc71",
-      color: "white",
-      padding: "16px 40px",
-      borderRadius: "32px",
-      fontSize: "20px",
-      textDecoration: "none",
-      boxShadow: "0 4px 20px rgba(0,0,0,0.3)"
-    }}>
-      📞 {callButton.name}さんに電話する
-    </a>
-  </div>
-)}
+    <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
+      <video ref={videoRef} style={{ display: 'none' }} playsInline muted />
 
- {isPersonDetected ? (
-  <Canvas
-    style={{ width: '100%', height: '100%', display: 'block' }}
-    camera={{ position: [0, 1.2, 4.0], fov: 25 }}
-  >
-    <ambientLight intensity={0.7} />
-    <directionalLight position={[1, 2, 3]} />
-    <Avatar vrmUrl={vrmUrl} emotion={emotion} />
-    <OrbitControls target={[0, 1.2, 0]} />
-  </Canvas>
-) : (
-  <div style={{
-    width: '100%', height: '100%',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    background: '#000', color: '#fff', fontSize: '24px'
-  }}>
-    しばらくお待ちください...
-  </div>
-)}
+      {/* ログアウトボタン */}
+      <button
+        onClick={async () => {
+          await supabase.auth.signOut();
+          router.push("/login");
+        }}
+        style={{
+          position: "absolute",
+          top: "16px",
+          right: "16px",
+          zIndex: 10,
+          padding: "8px 16px",
+          background: "rgba(0,0,0,0.5)",
+          color: "white",
+          border: "none",
+          borderRadius: "8px",
+          cursor: "pointer"
+        }}
+      >
+        ログアウト
+      </button>
+
+      {/* 電話ボタン */}
+      {callButton && (
+        <div style={{
+          position: "absolute",
+          bottom: "80px",
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 10,
+          textAlign: "center"
+        }}>
+          <a href={`tel:${callButton.phone}`} style={{
+            display: "block",
+            background: "#2ecc71",
+            color: "white",
+            padding: "16px 40px",
+            borderRadius: "32px",
+            fontSize: "20px",
+            textDecoration: "none",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.3)"
+          }}>
+            📞 {callButton.name}さんに電話する
+          </a>
+        </div>
+      )}
+
+      {isPersonDetected ? (
+        <Canvas
+          style={{ width: '100%', height: '100%', display: 'block' }}
+          camera={{ position: [0, 1.2, 4.0], fov: 25 }}
+        >
+          <ambientLight intensity={0.7} />
+          <directionalLight position={[1, 2, 3]} />
+          <Avatar vrmUrl={vrmUrl} emotion={emotion} />
+          <OrbitControls target={[0, 1.2, 0]} />
+        </Canvas>
+      ) : (
+        <div style={{
+          width: '100%', height: '100%',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: '#000', color: '#fff', fontSize: '24px'
+        }}>
+          しばらくお待ちください...
+        </div>
+      )}
     </div>
-  );
-}
+  </>
+);
