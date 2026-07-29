@@ -469,25 +469,36 @@ if (customerData?.sheet_id) {
 };
   // 🔥 音声認識を復活
   useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
-    const recognition = new SpeechRecognition();
-    recognitionRef.current = recognition;
-    recognition.lang = "ja-JP";
-    recognition.continuous = true;
-    recognition.onresult = (event: any) => {
-      const text = event.results[event.results.length - 1][0].transcript;
-      sendMessage(text);
-    };
-    recognition.onend = () => {
-  console.log("recognition ended, restarting...");
-  if (!isSpeakingRef.current) try { recognition.start(); } catch (e) {}
-};
-recognition.onstart = () => {
-  console.log("recognition started!");
-};
-recognition.start();
-  }, []);
+  const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+  if (!SpeechRecognition) return;
+  const recognition = new SpeechRecognition();
+  recognitionRef.current = recognition;
+  recognition.lang = "ja-JP";
+  recognition.continuous = false;       // ← iOS Safariのバグ回避のため false に変更
+  recognition.interimResults = false;
+
+  recognition.onresult = (event: any) => {
+    const text = event.results[event.results.length - 1][0].transcript;
+    sendMessage(text);
+  };
+
+  recognition.onerror = (event: any) => {
+    console.error("音声認識エラー:", event.error);   // ← 追加：原因の可視化
+  };
+
+  recognition.onend = () => {
+    console.log("recognition ended, restarting...");
+    if (!isSpeakingRef.current) {
+      try { recognition.start(); } catch (e) { console.error("再開失敗:", e); }
+    }
+  };
+
+  recognition.onstart = () => {
+    console.log("recognition started!");
+  };
+
+  recognition.start();
+}, []);
   useEffect(() => {
   const init = async () => {
     await initDetector();
