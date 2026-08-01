@@ -507,11 +507,11 @@ const sendMessage = async (text: string, emailOverride?: string) => {
     };
 
     recognition.onend = () => {
-      addLog("🔁 recognition ended");
-      if (!isSpeakingRef.current) {
-        try { recognition.start(); } catch (e) { addLog(`再開失敗: ${e}`); }
-      }
-    };
+  addLog("🔁 recognition ended");
+  if (!isProcessingQueue.current) {     // ← isSpeakingRef から変更
+    try { recognition.start(); } catch (e) { addLog(`再開失敗: ${e}`); }
+  }
+};
 
     recognition.onstart = () => {
       addLog("🎤 recognition started");
