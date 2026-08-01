@@ -295,7 +295,11 @@ setInterval(async () => {
     if (nextText) await playAudio(nextText);
   }
   isProcessingQueue.current = false;
-  try { recognitionRef.current?.start(); } catch (e) {}  // ← 追加：全部話し終わったら1回だけ再開
+  try { recognitionRef.current?.start(); 
+   addLog("🎤 再開試行OK");  
+  } catch (e) {}  // ← 追加：全部話し終わったら1回だけ再開
+   addLog(`❌ 再開失敗: ${e}`); 
+    }
 };
 
 const speakDirectly = (text: string) => {
