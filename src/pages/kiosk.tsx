@@ -360,6 +360,7 @@ const startDetection = () => {
   // --- 実際の音声再生ロジック ---
   const playAudio = (text: string) => {
     return new Promise<void>(async (resolve) => {
+       addLog(`🔊 再生開始: ${text.slice(0, 15)}`);   // ← 追加
       isSpeakingRef.current = true;
       try {
         recognitionRef.current?.stop();
@@ -368,6 +369,7 @@ const startDetection = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text })
         });
+         if (!res.ok) addLog(`❌ TTS失敗: ${res.status}`);   // ← 追加
         const blob = await res.blob();
         const audio = new Audio(URL.createObjectURL(blob));
         const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -409,20 +411,21 @@ const startDetection = () => {
 
  // --- AIに送信 ---
 const sendMessage = async (text: string, emailOverride?: string) => {
-  console.log("sendMessage called:", text);  // ← 追加
+  addLog(`📤 送信: ${text}`);   // ← 追加
+  console.log("sendMessage called:", text);
   if (!text) return;
   setMessages(prev => [...prev, { role: "user", text }]);
   try {
-  const email = emailOverride || session?.user?.email || localStorage.getItem('userEmail') || '';
-console.log("sending email:", email);
-const response = await fetch("/api/chat", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ message: text, email })
-});
+    const email = emailOverride || session?.user?.email || localStorage.getItem('userEmail') || '';
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: text, email })
+    });
     const data = await response.json();
     let reply = data.reply ?? "少しお待ちください";
-
+    addLog(`📥 返信: ${reply}`);   // ← 追加
+    ...
     setMessages(prev => [...prev, { role: "ai", text: reply }]);
 // 電話ボタンの検知 [CALL:名前:電話番号]
 // 感情の検知
