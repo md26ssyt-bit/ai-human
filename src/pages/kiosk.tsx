@@ -287,14 +287,16 @@ setInterval(async () => {
 
   // --- キューを順番に処理する関数 ---
  const processQueue = async () => {
-    if (isProcessingQueue.current || speakQueue.current.length === 0) return;
-    isProcessingQueue.current = true;
-    while (speakQueue.current.length > 0) {
-      const nextText = speakQueue.current.shift();
-      if (nextText) await playAudio(nextText);
-    }
-    isProcessingQueue.current = false;
-  };
+  if (isProcessingQueue.current || speakQueue.current.length === 0) return;
+  isProcessingQueue.current = true;
+  try { recognitionRef.current?.stop(); } catch (e) {}   // ← 追加：話し始める前に1回だけ停止
+  while (speakQueue.current.length > 0) {
+    const nextText = speakQueue.current.shift();
+    if (nextText) await playAudio(nextText);
+  }
+  isProcessingQueue.current = false;
+  try { recognitionRef.current?.start(); } catch (e) {}  // ← 追加：全部話し終わったら1回だけ再開
+};
 
 const speakDirectly = (text: string) => {
   setMessages(prev => [...prev, { role: "ai", text }]);
@@ -363,7 +365,7 @@ const startDetection = () => {
       addLog(`🔊 再生開始: ${text.slice(0, 15)}`);
       isSpeakingRef.current = true;
       try {
-        recognitionRef.current?.stop();
+       
         const res = await fetch("/api/tts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -392,7 +394,7 @@ const startDetection = () => {
           isSpeakingRef.current = false;
           (window as any).mouthState.current.speaking = false;
           (window as any).mouthState.current.volume = 0;
-          try { recognitionRef.current?.start(); } catch (e) {}
+         
           resolve();
         };
         await audio.play();
