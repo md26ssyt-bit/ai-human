@@ -281,6 +281,7 @@ setInterval(async () => {
   const [messages, setMessages] = useState<any[]>([]);
   const isSpeakingRef = useRef(false);
   const recognitionRef = useRef<any>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
   const stopResolveRef = useRef<(() => void) | null>(null); 
   const speakQueue = useRef<string[]>([]);
   const isProcessingQueue = useRef(false);
@@ -386,7 +387,11 @@ const startDetection = () => {
         if (!res.ok) addLog(`❌ TTS失敗: ${res.status}`);
         const blob = await res.blob();
         const audio = new Audio(URL.createObjectURL(blob));
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const audioContext = audioContextRef.current || new (window.AudioContext || (window as any).webkitAudioContext)();
+       if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+          }
+        audioContextRef.current = audioContext;
         const source = audioContext.createMediaElementSource(audio);
         const analyser = audioContext.createAnalyser();
         analyser.fftSize = 256;
@@ -610,6 +615,7 @@ return (
         onClick={async () => {
           const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
           await ctx.resume();
+           audioContextRef.current = ctx; 
           setAudioUnlocked(true);
           speakDirectly(greeting || 'こんにちは');
         }}
