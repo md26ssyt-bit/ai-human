@@ -212,6 +212,10 @@ if (typeof window !== 'undefined' && !(window as any).mouthState) {
   const [callButton, setCallButton] = useState<{name: string, phone: string} | null>(null);
   const [isPersonDetected, setIsPersonDetected] = useState(false);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
+  const [debugLog, setDebugLog] = useState<string[]>([]);
+  const addLog = (msg: string) => {
+  setDebugLog(prev => [...prev.slice(-8), `${new Date().toLocaleTimeString()} ${msg}`]);
+};
   const [emotion, setEmotion] = useState('neutral');
   const videoRef = useRef<HTMLVideoElement>(null);
   const detectorRef = useRef<any>(null);
@@ -470,31 +474,35 @@ if (customerData?.sheet_id) {
   // 🔥 音声認識を復活
   useEffect(() => {
   const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-  if (!SpeechRecognition) return;
+  if (!SpeechRecognition) {
+    addLog("❌ SpeechRecognition未対応");
+    return;
+  }
   const recognition = new SpeechRecognition();
   recognitionRef.current = recognition;
   recognition.lang = "ja-JP";
-  recognition.continuous = false;       // ← iOS Safariのバグ回避のため false に変更
+  recognition.continuous = false;
   recognition.interimResults = false;
 
   recognition.onresult = (event: any) => {
     const text = event.results[event.results.length - 1][0].transcript;
+    addLog(`✅ 認識結果: ${text}`);
     sendMessage(text);
   };
 
   recognition.onerror = (event: any) => {
-    console.error("音声認識エラー:", event.error);   // ← 追加：原因の可視化
+    addLog(`⚠️ エラー: ${event.error}`);
   };
 
   recognition.onend = () => {
-    console.log("recognition ended, restarting...");
+    addLog("🔁 recognition ended");
     if (!isSpeakingRef.current) {
-      try { recognition.start(); } catch (e) { console.error("再開失敗:", e); }
+      try { recognition.start(); } catch (e) { addLog(`再開失敗: ${e}`); }
     }
   };
 
   recognition.onstart = () => {
-    console.log("recognition started!");
+    addLog("🎤 recognition started");
   };
 
   recognition.start();
@@ -564,6 +572,14 @@ useEffect(() => {
 ); 
 return (
   <>
+  <div style={{
+  position: 'fixed', bottom: 0, left: 0, right: 0,
+  background: 'rgba(0,0,0,0.8)', color: '#0f0',
+  fontSize: '12px', padding: '8px', zIndex: 9999,
+  maxHeight: '150px', overflow: 'auto', fontFamily: 'monospace'
+}}>
+  {debugLog.map((log, i) => <div key={i}>{log}</div>)}
+</div>
     {!audioUnlocked && (
       <div
         style={{
