@@ -214,8 +214,8 @@ if (typeof window !== 'undefined' && !(window as any).mouthState) {
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [debugLog, setDebugLog] = useState<string[]>([]);
   const addLog = (msg: string) => {
-  setDebugLog(prev => [...prev.slice(-8), `${new Date().toLocaleTimeString()} ${msg}`]);
-};
+    setDebugLog(prev => [...prev.slice(-8), `${new Date().toLocaleTimeString()} ${msg}`]);
+  };
   const [emotion, setEmotion] = useState('neutral');
   const videoRef = useRef<HTMLVideoElement>(null);
   const detectorRef = useRef<any>(null);
@@ -360,7 +360,7 @@ const startDetection = () => {
   // --- 実際の音声再生ロジック ---
   const playAudio = (text: string) => {
     return new Promise<void>(async (resolve) => {
-       addLog(`🔊 再生開始: ${text.slice(0, 15)}`);   // ← 追加
+      addLog(`🔊 再生開始: ${text.slice(0, 15)}`);
       isSpeakingRef.current = true;
       try {
         recognitionRef.current?.stop();
@@ -369,7 +369,7 @@ const startDetection = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text })
         });
-         if (!res.ok) addLog(`❌ TTS失敗: ${res.status}`);   // ← 追加
+        if (!res.ok) addLog(`❌ TTS失敗: ${res.status}`);
         const blob = await res.blob();
         const audio = new Audio(URL.createObjectURL(blob));
         const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -411,107 +411,108 @@ const startDetection = () => {
 
  // --- AIに送信 ---
 const sendMessage = async (text: string, emailOverride?: string) => {
-  addLog(`📤 送信: ${text}`);   // ← 追加
-  console.log("sendMessage called:", text);
   addLog(`📤 送信: ${text}`);
+  console.log("sendMessage called:", text);
   if (!text) return;
   setMessages(prev => [...prev, { role: "user", text }]);
   try {
     const email = emailOverride || session?.user?.email || localStorage.getItem('userEmail') || '';
+    console.log("sending email:", email);
     const response = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message: text, email })
     });
+    if (!response.ok) addLog(`❌ chat API失敗: ${response.status}`);
     const data = await response.json();
     let reply = data.reply ?? "少しお待ちください";
     addLog(`📥 返信: ${reply}`);
-    addLog(`📥 返信: ${reply}`);   // ← 追加
-    ...
+
     setMessages(prev => [...prev, { role: "ai", text: reply }]);
-// 電話ボタンの検知 [CALL:名前:電話番号]
-// 感情の検知
-const emotionMatch = reply.match(/\[EMOTION:(.+?)\]/);
-if (emotionMatch) {
-  setEmotion(emotionMatch[1]);
-  reply = reply.replace(/\[EMOTION:.+?\]/, '').trim();
-} else {
-  setEmotion('neutral');
-}
-const callMatch = reply.match(/\[CALL:(.+?):(.+?)\]/);
-if (callMatch) {
-  setCallButton({ name: callMatch[1], phone: callMatch[2] });
-  reply = reply.replace(/\[CALL:.+?\]/, '').trim();
-} else {
-  setCallButton(null);
-}
+    // 電話ボタンの検知 [CALL:名前:電話番号]
+    // 感情の検知
+    const emotionMatch = reply.match(/\[EMOTION:(.+?)\]/);
+    if (emotionMatch) {
+      setEmotion(emotionMatch[1]);
+      reply = reply.replace(/\[EMOTION:.+?\]/, '').trim();
+    } else {
+      setEmotion('neutral');
+    }
+    const callMatch = reply.match(/\[CALL:(.+?):(.+?)\]/);
+    if (callMatch) {
+      setCallButton({ name: callMatch[1], phone: callMatch[2] });
+      reply = reply.replace(/\[CALL:.+?\]/, '').trim();
+    } else {
+      setCallButton(null);
+    }
     // 句読点で分割して順番に読み上げ
     const sentences = reply.split(/(?<=[。！？])/);
     for (const sentence of sentences) {
       if (sentence.trim()) speak(sentence.trim());
     }
     // ログを記録
-const { data: customerData } = await supabase
-  .from('customers')
-  .select('sheet_id, company_name')
-  .eq('email', email)
-  .single();
+    const { data: customerData } = await supabase
+      .from('customers')
+      .select('sheet_id, company_name')
+      .eq('email', email)
+      .single();
 
-if (customerData?.sheet_id) {
-  await fetch('/api/log-visit', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      sheetId: customerData.sheet_id,
-      messages: [
-        { role: 'user', text },
-        { role: 'ai', text: reply }
-      ],
-      companyName: customerData.company_name,
-      email,
-    }),
-  });
-}
+    if (customerData?.sheet_id) {
+      await fetch('/api/log-visit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sheetId: customerData.sheet_id,
+          messages: [
+            { role: 'user', text },
+            { role: 'ai', text: reply }
+          ],
+          companyName: customerData.company_name,
+          email,
+        }),
+      });
+    }
   } catch (error) {
+    addLog(`❌ sendMessageエラー: ${error}`);
     console.error("APIエラー:", error);
   }
 };
   // 🔥 音声認識を復活
   useEffect(() => {
-  const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-  if (!SpeechRecognition) {
-    addLog("❌ SpeechRecognition未対応");
-    return;
-  }
-  const recognition = new SpeechRecognition();
-  recognitionRef.current = recognition;
-  recognition.lang = "ja-JP";
-  recognition.continuous = false;
-  recognition.interimResults = false;
-
-  recognition.onresult = (event: any) => {
-    const text = event.results[event.results.length - 1][0].transcript;
-    addLog(`✅ 認識結果: ${text}`);
-    sendMessage(text);
-  };
-
-  recognition.onerror = (event: any) => {
-    addLog(`⚠️ エラー: ${event.error}`);
-  };
-
-  recognition.onend = () => {
-    addLog("🔁 recognition ended");
-    if (!isSpeakingRef.current) {
-      try { recognition.start(); } catch (e) { addLog(`再開失敗: ${e}`); }
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      addLog("❌ SpeechRecognition未対応");
+      return;
     }
-  };
+    const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
+    recognition.lang = "ja-JP";
+    recognition.continuous = false;
+    recognition.interimResults = false;
 
-  recognition.onstart = () => {
-    addLog("🎤 recognition started");
-  };
+    recognition.onresult = (event: any) => {
+      const text = event.results[event.results.length - 1][0].transcript;
+      addLog(`✅ 認識結果: ${text}`);
+      sendMessage(text);
+    };
 
-  recognition.start();
-}, []);
+    recognition.onerror = (event: any) => {
+      addLog(`⚠️ エラー: ${event.error}`);
+    };
+
+    recognition.onend = () => {
+      addLog("🔁 recognition ended");
+      if (!isSpeakingRef.current) {
+        try { recognition.start(); } catch (e) { addLog(`再開失敗: ${e}`); }
+      }
+    };
+
+    recognition.onstart = () => {
+      addLog("🎤 recognition started");
+    };
+
+    recognition.start();
+  }, []);
   useEffect(() => {
   const init = async () => {
     await initDetector();
@@ -577,14 +578,15 @@ useEffect(() => {
 ); 
 return (
   <>
-  <div style={{
-  position: 'fixed', bottom: 0, left: 0, right: 0,
-  background: 'rgba(0,0,0,0.8)', color: '#0f0',
-  fontSize: '12px', padding: '8px', zIndex: 9999,
-  maxHeight: '150px', overflow: 'auto', fontFamily: 'monospace'
-}}>
-  {debugLog.map((log, i) => <div key={i}>{log}</div>)}
-</div>
+    <div style={{
+      position: 'fixed', bottom: 0, left: 0, right: 0,
+      background: 'rgba(0,0,0,0.8)', color: '#0f0',
+      fontSize: '12px', padding: '8px', zIndex: 9999,
+      maxHeight: '150px', overflow: 'auto', fontFamily: 'monospace'
+    }}>
+      {debugLog.map((log, i) => <div key={i}>{log}</div>)}
+    </div>
+
     {!audioUnlocked && (
       <div
         style={{
