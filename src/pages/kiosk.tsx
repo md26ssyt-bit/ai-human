@@ -281,7 +281,7 @@ setInterval(async () => {
   const [messages, setMessages] = useState<any[]>([]);
   const isSpeakingRef = useRef(false);
   const recognitionRef = useRef<any>(null);
-  
+  const stopResolveRef = useRef<(() => void) | null>(null); 
   const speakQueue = useRef<string[]>([]);
   const isProcessingQueue = useRef(false);
 
@@ -289,19 +289,27 @@ setInterval(async () => {
  const processQueue = async () => {
   if (isProcessingQueue.current || speakQueue.current.length === 0) return;
   isProcessingQueue.current = true;
-  try { recognitionRef.current?.stop(); } catch (e) {}   // ← 追加：話し始める前に1回だけ停止
+
+  // マイクが完全に止まるのを待つ
+  await new Promise<void>((resolve) => {
+    if (!recognitionRef.current) return resolve();
+    stopResolveRef.current = resolve;
+    try { recognitionRef.current.stop(); } catch (e) { resolve(); }
+  });
+  addLog("✅ マイク完全停止を確認");
+
   while (speakQueue.current.length > 0) {
     const nextText = speakQueue.current.shift();
     if (nextText) await playAudio(nextText);
   }
   isProcessingQueue.current = false;
-  try { recognitionRef.current?.start(); 
-   addLog("🎤 再開試行OK");  
-  } catch (e) {}  // ← 追加：全部話し終わったら1回だけ再開
-   addLog(`❌ 再開失敗: ${e}`); 
-    }
+  try {
+    recognitionRef.current?.start();
+    addLog("🎤 再開試行OK");
+  } catch (e) {
+    addLog(`❌ 再開失敗: ${e}`);
+  }
 };
-
 const speakDirectly = (text: string) => {
   setMessages(prev => [...prev, { role: "ai", text }]);
  playAudio(text);
@@ -502,13 +510,12 @@ const sendMessage = async (text: string, emailOverride?: string) => {
       sendMessage(text);
     };
 
-    recognition.onerror = (event: any) => {
-      addLog(`⚠️ エラー: ${event.error}`);
-    };
-
     recognition.onend = () => {
   addLog("🔁 recognition ended");
-  if (!isProcessingQueue.current) {     // ← isSpeakingRef から変更
+  if (stopResolveRef.current) {
+    stopResolveRef.current();      // 「止まった」ことを知らせる
+    stopResolveRef.current = null;
+  } else if (!isProcessingQueue.current) {
     try { recognition.start(); } catch (e) { addLog(`再開失敗: ${e}`); }
   }
 };
