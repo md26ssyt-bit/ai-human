@@ -413,6 +413,7 @@ const startDetection = () => {
 const sendMessage = async (text: string, emailOverride?: string) => {
   addLog(`📤 送信: ${text}`);   // ← 追加
   console.log("sendMessage called:", text);
+  addLog(`📤 送信: ${text}`);
   if (!text) return;
   setMessages(prev => [...prev, { role: "user", text }]);
   try {
@@ -424,6 +425,7 @@ const sendMessage = async (text: string, emailOverride?: string) => {
     });
     const data = await response.json();
     let reply = data.reply ?? "少しお待ちください";
+    addLog(`📥 返信: ${reply}`);
     addLog(`📥 返信: ${reply}`);   // ← 追加
     ...
     setMessages(prev => [...prev, { role: "ai", text: reply }]);
