@@ -506,7 +506,8 @@ const sendMessage = async (text: string, emailOverride?: string) => {
     const recognition = new SpeechRecognition();
     recognitionRef.current = recognition;
     recognition.lang = "ja-JP";
-    recognition.continuous = false;
+   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    recognition.continuous = !isIOS;
     recognition.interimResults = false;
 
     recognition.onresult = (event: any) => {
@@ -596,16 +597,7 @@ useEffect(() => {
 ); 
 return (
   <>
-    <div style={{
-      position: 'fixed', bottom: 0, left: 0, right: 0,
-      background: 'rgba(0,0,0,0.8)', color: '#0f0',
-      fontSize: '12px', padding: '8px', zIndex: 9999,
-      maxHeight: '150px', overflow: 'auto', fontFamily: 'monospace'
-    }}>
-      {debugLog.map((log, i) => <div key={i}>{log}</div>)}
-    </div>
-
-    {!audioUnlocked && (
+        {!audioUnlocked && (
       <div
         style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
