@@ -282,7 +282,8 @@ setInterval(async () => {
   const isSpeakingRef = useRef(false);
   const recognitionRef = useRef<any>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const stopResolveRef = useRef<(() => void) | null>(null); 
+  const stopResolveRef = useRef<(() => void) | null>(null);
+  const lastAudioUrlRef = useRef<string | null>(null); // ← 追加：直前の再生URL解放用
   const speakQueue = useRef<string[]>([]);
   const isProcessingQueue = useRef(false);
 
@@ -304,11 +305,17 @@ setInterval(async () => {
     if (nextText) await playAudio(nextText);
   }
   isProcessingQueue.current = false;
-  try {
-    recognitionRef.current?.start();
-    addLog("🎤 再開試行OK");
-  } catch (e) {
-    addLog(`❌ 再開失敗: ${e}`);
+
+  // 人がいる時だけマイクを再開する（いなければ再開しない＝省負荷）
+  if (isPersonDetectedRef.current) {
+    try {
+      recognitionRef.current?.start();
+      addLog("🎤 再開試行OK");
+    } catch (e) {
+      addLog(`❌ 再開失敗: ${e}`);
+    }
+  } else {
+    addLog("💤 人がいないためマイク再開スキップ");
   }
 };
 const speakDirectly = (text: string) => {
@@ -368,7 +375,9 @@ const startDetection = () => {
       }
     }
     prevImageData = imageData;
-    setTimeout(detect, 500);
+    // 人がいる間は0.5秒ごと、いない間は1.5秒ごとにチェック（省負荷）
+    const interval = isPersonDetectedRef.current ? 500 : 1500;
+    setTimeout(detect, interval);
   };
   detect();
 };
@@ -386,7 +395,14 @@ const startDetection = () => {
         });
         if (!res.ok) addLog(`❌ TTS失敗: ${res.status}`);
         const blob = await res.blob();
-        const audio = new Audio(URL.createObjectURL(blob));
+        // 前回のURLが残っていたら解放してからつくる（メモリリーク対策）
+        if (lastAudioUrlRef.current) {
+          URL.revokeObjectURL(lastAudioUrlRef.current);
+          lastAudioUrlRef.current = null;
+        }
+        const audioUrl = URL.createObjectURL(blob);
+        lastAudioUrlRef.current = audioUrl;
+        const audio = new Audio(audioUrl);
         const audioContext = audioContextRef.current || new (window.AudioContext || (window as any).webkitAudioContext)();
        if (audioContext.state === 'suspended') {
         await audioContext.resume();
@@ -411,7 +427,6 @@ const startDetection = () => {
           isSpeakingRef.current = false;
           (window as any).mouthState.current.speaking = false;
           (window as any).mouthState.current.volume = 0;
-         
           resolve();
         };
         await audio.play();
@@ -521,7 +536,8 @@ const sendMessage = async (text: string, emailOverride?: string) => {
   if (stopResolveRef.current) {
     stopResolveRef.current();      // 「止まった」ことを知らせる
     stopResolveRef.current = null;
-  } else if (!isProcessingQueue.current) {
+  } else if (!isProcessingQueue.current && isPersonDetectedRef.current) {
+    // 人がいる時だけ自動再開する（いなければ再開せず省負荷にする）
     try { recognition.start(); } catch (e) { addLog(`再開失敗: ${e}`); }
   }
 };
@@ -544,6 +560,27 @@ useEffect(() => {
   sendMessageRef.current = sendMessage;
 });
 
+// 人がいる/いなくなったタイミングでマイクの起動・停止を切り替える
+useEffect(() => {
+  if (isPersonDetected) {
+    if (recognitionRef.current && !isProcessingQueue.current) {
+      try {
+        recognitionRef.current.start();
+        addLog("🎤 人を検知→マイク再開");
+      } catch (e) {
+        // すでに動いている場合はエラーになるだけなので無視でOK
+      }
+    }
+  } else {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+        addLog("💤 人がいなくなった→マイク停止");
+      } catch (e) {}
+    }
+  }
+}, [isPersonDetected]);
+
 useEffect(() => {
   if (isPersonDetected && greeting && !hasGreetedRef.current) {
     hasGreetedRef.current = true;
@@ -557,6 +594,18 @@ useEffect(() => {
     hasGreetedRef.current = false;  // 離れたらリセット
   }
 }, [isPersonDetected, greeting]);
+
+// 深夜の自動リロード（保険。メインはFully Kiosk Browser側の設定を推奨）
+useEffect(() => {
+  const nightlyCheck = setInterval(() => {
+    const now = new Date();
+    if (now.getHours() === 3 && now.getMinutes() === 0) {
+      location.reload();
+    }
+  }, 60000); // 1分ごとにチェック
+  return () => clearInterval(nightlyCheck);
+}, []);
+
  if (!isReady) return (
   <div style={{
     width: "100vw",
