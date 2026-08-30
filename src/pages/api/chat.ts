@@ -9,10 +9,64 @@ const supabase = createClient(
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
-  try {
-    const { message, email } = req.body;
+   try {
+    const { message, email, mode } = req.body;
     const apiKey = process.env.GEMINI_API_KEY;
 
+    // ====== 占い・観光・雑談・心の相談モード（新規）======
+    // mode が送られてきた場合のみここで処理して返す。
+    // mode が無い場合（＝今まで通りのキオスクからのリクエスト）は、
+    // この if 文の中を通らず、下の既存ロジックへそのまま進む。
+    if (mode) {
+      const modePrompts: Record<string, string> = {
+        fortune:
+          'あなたは親しみやすい占い師兼性格診断士です。エンタメとして楽しく、' +
+          '断定的すぎない優しい表現で診断してください。',
+        travel:
+          'あなたは日本の観光案内のプロです。観光地やお店について、' +
+          '親しみやすく具体的に案内してください。',
+        free: 'あなたは気さくな会話相手です。自由に楽しく雑談してください。',
+        counseling:
+          'あなたは優しく話を聞く相談相手です。相手の気持ちを否定せず、' +
+          '共感的に耳を傾けてください。ただし、あなたは医師でも臨床心理士でもないため、' +
+          '診断や治療的な助言は行わないでください。深刻な悩みや長期化している問題については、' +
+          '専門機関（心療内科、公認心理師など）への相談を自然な形で勧めてください。',
+      };
+      const modeSystemPrompt = modePrompts[mode] || modePrompts.free;
+
+      const modeApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+      const modeResponse = await fetch(modeApiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: `${modeSystemPrompt}
+必ず自然な会話文だけを返してください。
+必ず3文以内で簡潔に答えてください。
+返答の文章の最後に必ず[EMOTION:happy]か[EMOTION:sad]か[EMOTION:angry]か[EMOTION:surprised]か[EMOTION:neutral]のどれか1つを付けてください。これは絶対に省略しないでください。
+"reply:" や "回答:" などのラベルは絶対に出力しないでください。
+ユーザー: ${message}`,
+                },
+              ],
+            },
+          ],
+        }),
+      });
+
+      const modeData = await modeResponse.json();
+      const modeRawText =
+        modeData.candidates?.[0]?.content?.parts?.[0]?.text ?? '少しお待ちください';
+      const modeReply = modeRawText
+        .replace(/^reply[:：\s]*/i, '')
+        .replace(/^回答[:：\s]*/i, '')
+        .trim();
+
+      return res.status(200).json({ reply: modeReply });
+    }
+    // ====== ここまで新規追加 ======
     let systemPrompt = 'あなたは企業受付AIです。丁寧にお客様をご案内してください。ユーザーが挨拶してきても挨拶を返さず、すぐに用件を聞いてください。例：「ご用件をお聞かせください」';
     let notifyEmail = process.env.NOTIFY_EMAIL;
     let companyName = '不明';
