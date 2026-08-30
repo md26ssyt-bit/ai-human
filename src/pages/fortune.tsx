@@ -129,6 +129,7 @@ export default function FortunePage() {
   const isSpeakingRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
   const lastAudioUrlRef = useRef<string | null>(null);
   const speakQueue = useRef<string[]>([]);
   const isProcessingQueue = useRef(false);
@@ -162,17 +163,23 @@ export default function FortunePage() {
         if (audioContext.state === 'suspended') await audioContext.resume();
         audioContextRef.current = audioContext;
 
-        const source = audioContext.createMediaElementSource(audio);
-        const analyser = audioContext.createAnalyser();
-        analyser.fftSize = 256;
-        source.connect(analyser);
-        analyser.connect(audioContext.destination);
+        // createMediaElementSource は同じ<audio>要素に対して1回しか呼べないため、
+        // 初回だけ作成して、以降は使い回す
+        let analyser = analyserRef.current;
+        if (!analyser) {
+          const source = audioContext.createMediaElementSource(audio);
+          analyser = audioContext.createAnalyser();
+          analyser.fftSize = 256;
+          source.connect(analyser);
+          analyser.connect(audioContext.destination);
+          analyserRef.current = analyser;
+        }
         const dataArray = new Uint8Array(analyser.frequencyBinCount);
         (window as any).mouthState.current.speaking = true;
 
         const animate = () => {
           if (!isSpeakingRef.current) return;
-          analyser.getByteFrequencyData(dataArray);
+          analyser!.getByteFrequencyData(dataArray);
           const volume = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
           (window as any).mouthState.current.volume = Math.min(volume / 80, 1);
           requestAnimationFrame(animate);
