@@ -304,14 +304,15 @@ export default function FortunePage() {
         <div style={{
           position: "absolute", inset: 0, display: "flex", flexDirection: "column",
           alignItems: "center", justifyContent: "flex-end", paddingBottom: 60, gap: 16,
+          pointerEvents: "none",
         }}>
-          <div style={{ color: "#fff", fontSize: 22, fontWeight: "bold", marginBottom: 8 }}>
+          <div style={{ color: "#fff", fontSize: 22, fontWeight: "bold", marginBottom: 8, pointerEvents: "none" }}>
             今日はどうしますか？
           </div>
-          <button onClick={() => startMode('fortune')} style={menuButtonStyle}>🔮 占い・性格診断</button>
-          <button onClick={() => startMode('travel')} style={menuButtonStyle}>🗾 観光・お店を教えてもらう</button>
-          <button onClick={() => startMode('counseling')} style={menuButtonStyle}>🌱 心の相談</button>
-          <button onClick={() => startMode('free')} style={menuButtonStyle}>💬 自由に話す</button>
+          <button onClick={() => startMode('fortune')} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>🔮 占い・性格診断</button>
+          <button onClick={() => startMode('travel')} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>🗾 観光・お店を教えてもらう</button>
+          <button onClick={() => startMode('counseling')} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>🌱 心の相談</button>
+          <button onClick={() => startMode('free')} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>💬 自由に話す</button>
         </div>
       )}
 
