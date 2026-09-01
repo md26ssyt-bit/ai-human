@@ -125,6 +125,9 @@ export default function FortunePage() {
   const [inputText, setInputText] = useState('');
   const [emotion, setEmotion] = useState('neutral');
   const [isSending, setIsSending] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [micSupported, setMicSupported] = useState(true);
+  const recognitionRef = useRef<any>(null);
 
   const isSpeakingRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -269,6 +272,51 @@ export default function FortunePage() {
     setInputText('');
   };
 
+  // --- 音声認識（ボタンを押した時だけ聞く、プッシュ・トゥ・トーク方式）---
+  useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setMicSupported(false);
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = "ja-JP";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onresult = (event: any) => {
+      const text = event.results[event.results.length - 1][0].transcript;
+      if (mode === 'counseling' && containsCrisisSignal(text)) {
+        setMessages(prev => [
+          ...prev,
+          { role: 'user', text },
+          { role: 'ai', text: CRISIS_RESPONSE },
+        ]);
+        speak(CRISIS_RESPONSE);
+        return;
+      }
+      sendMessage(text, mode);
+    };
+    recognition.onend = () => setIsListening(false);
+    recognition.onerror = () => setIsListening(false);
+
+    recognitionRef.current = recognition;
+
+    return () => {
+      try { recognition.stop(); } catch (e) {}
+    };
+  }, [mode]);
+
+  const handleMicClick = () => {
+    if (!recognitionRef.current || isListening) return;
+    setIsListening(true);
+    try {
+      recognitionRef.current.start();
+    } catch (e) {
+      setIsListening(false);
+    }
+  };
+
   const unlockAudio = async () => {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
     await ctx.resume();
@@ -359,6 +407,20 @@ export default function FortunePage() {
               placeholder="メッセージを入力..."
               style={{ flex: 1, padding: "10px 14px", borderRadius: 20, border: "none", fontSize: 14 }}
             />
+            {micSupported && (
+              <button
+                onClick={handleMicClick}
+                style={{
+                  ...menuButtonStyle,
+                  padding: "8px 14px",
+                  fontSize: 14,
+                  background: isListening ? "#ff5555" : "#fff",
+                  color: isListening ? "#fff" : "#222",
+                }}
+              >
+                {isListening ? "🎤 聞いています..." : "🎤"}
+              </button>
+            )}
             <button onClick={handleSend} disabled={isSending} style={{ ...menuButtonStyle, padding: "8px 16px", fontSize: 14 }}>
               送信
             </button>
