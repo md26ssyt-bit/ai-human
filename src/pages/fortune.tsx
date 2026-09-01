@@ -413,12 +413,18 @@ export default function FortunePage() {
                 style={{
                   ...menuButtonStyle,
                   padding: "8px 14px",
-                  fontSize: 14,
+                  fontSize: 12,
                   background: isListening ? "#ff5555" : "#fff",
                   color: isListening ? "#fff" : "#222",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 2,
+                  lineHeight: 1.2,
                 }}
               >
-                {isListening ? "🎤 聞いています..." : "🎤"}
+                <span style={{ fontSize: 18 }}>🎤</span>
+                <span>{isListening ? "聞いています..." : "話す"}</span>
               </button>
             )}
             <button onClick={handleSend} disabled={isSending} style={{ ...menuButtonStyle, padding: "8px 16px", fontSize: 14 }}>
