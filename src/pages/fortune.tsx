@@ -153,11 +153,11 @@ export default function FortunePage() {
 
   // カメラ・アバターの位置調整用（?camera=1 を付けた時だけパネルを表示）
   const [camSettings, setCamSettings] = useState({
-    fov: 30,
+    fov: 28.05,
     camZ: 5.5,
-    camY: 1.3,
+    camY: 1.35,
     targetY: 1.1,
-    avatarY: -1.4,
+    avatarY: -2.4,
   });
   const [showCamPanel, setShowCamPanel] = useState(false);
   useEffect(() => {
