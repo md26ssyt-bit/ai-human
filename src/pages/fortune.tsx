@@ -118,6 +118,16 @@ function ResponsiveCamera({ baseFov, baseZ, baseY, targetY }: { baseFov: number;
 type Mode = 'menu' | 'fortune' | 'travel' | 'free' | 'counseling';
 
 // ======================
+// 選べるキャラクター
+// ======================
+type CharacterId = 'woman' | 'man' | 'witch';
+const CHARACTERS: { id: CharacterId; label: string; emoji: string; vrmUrl: string }[] = [
+  { id: 'woman', label: '女性', emoji: '👩', vrmUrl: '/woman.vrm' },
+  { id: 'man', label: '男性', emoji: '🧑', vrmUrl: '/man.vrm' },
+  { id: 'witch', label: '魔女', emoji: '🧙‍♀️', vrmUrl: '/witch.vrm' },
+];
+
+// ======================
 // 危機的なサインの簡易検知（AIに判断を任せず、機械的に検知する）
 // ここに該当した場合は、Geminiに送らず即座に相談窓口を案内する
 // ======================
@@ -142,6 +152,7 @@ const CRISIS_RESPONSE =
 // ======================
 export default function FortunePage() {
   const [mode, setMode] = useState<Mode>('menu');
+  const [character, setCharacter] = useState<CharacterId | null>(null);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [messages, setMessages] = useState<{ role: string; text: string }[]>([]);
   const [inputText, setInputText] = useState('');
@@ -187,7 +198,7 @@ export default function FortunePage() {
         const res = await fetch("/api/tts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text }),
+          body: JSON.stringify({ text, character }),
         });
         const blob = await res.blob();
         if (lastAudioUrlRef.current) {
@@ -265,7 +276,7 @@ export default function FortunePage() {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, mode: currentMode }),
+        body: JSON.stringify({ message: text, mode: currentMode, character }),
       });
       const data = await response.json();
       let reply = data.reply ?? "少し考えさせてください。";
@@ -389,7 +400,7 @@ export default function FortunePage() {
           <ResponsiveCamera baseFov={camSettings.fov} baseZ={camSettings.camZ} baseY={camSettings.camY} targetY={camSettings.targetY} />
           <ambientLight intensity={0.7} />
           <directionalLight position={[1, 2, 3]} />
-          <Avatar vrmUrl="/avatar.vrm" emotion={emotion} avatarY={camSettings.avatarY} />
+          <Avatar vrmUrl={CHARACTERS.find(c => c.id === character)?.vrmUrl || '/avatar.vrm'} emotion={emotion} avatarY={camSettings.avatarY} />
           <OrbitControls target={[0, camSettings.targetY, 0]} enableZoom={false} />
         </Canvas>
       </div>
@@ -422,7 +433,31 @@ export default function FortunePage() {
         </div>
       )}
 
-      {mode === 'menu' && (
+      {character === null && (
+        <div style={{
+          position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "flex-end", paddingBottom: 60, gap: 16,
+          pointerEvents: "none",
+        }}>
+          <div style={{ color: "#fff", fontSize: 22, fontWeight: "bold", marginBottom: 8, pointerEvents: "none" }}>
+            お話しするキャラクターを選んでください
+          </div>
+          <div style={{ display: "flex", gap: 12, pointerEvents: "auto" }}>
+            {CHARACTERS.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => setCharacter(c.id)}
+                style={{ ...menuButtonStyle, display: "flex", flexDirection: "column", alignItems: "center", padding: "16px 20px" }}
+              >
+                <span style={{ fontSize: 28 }}>{c.emoji}</span>
+                <span style={{ marginTop: 4 }}>{c.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {character !== null && mode === 'menu' && (
         <div style={{
           position: "absolute", inset: 0, display: "flex", flexDirection: "column",
           alignItems: "center", justifyContent: "flex-end", paddingBottom: 60, gap: 16,
