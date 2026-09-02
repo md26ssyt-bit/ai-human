@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { VRM, VRMLoaderPlugin } from "@pixiv/three-vrm";
 import * as THREE from "three";
@@ -88,6 +88,32 @@ function Avatar({ vrmUrl, emotion = 'neutral' }: { vrmUrl: string, emotion?: str
       <primitive object={vrm.scene} />
     </group>
   );
+}
+
+// ======================
+// 画面サイズ（アスペクト比）に応じてカメラを自動調整する
+// ======================
+function ResponsiveCamera() {
+  const { camera, size } = useThree();
+  useEffect(() => {
+    const aspect = size.width / size.height;
+    const cam = camera as THREE.PerspectiveCamera;
+
+    // 横長（PCなど）は今まで通り、縦長（スマホなど）は画角を広げて
+    // 全身が横方向にもはみ出さないようにする
+    const baseFov = 25;
+    const fov = aspect < 1 ? Math.min(45, baseFov / aspect) : baseFov;
+
+    // 画角を広げた分、少しカメラを引いて大きさのバランスを保つ
+    const baseZ = 4.0;
+    const z = aspect < 1 ? baseZ * (baseFov / fov) * 1.6 : baseZ;
+
+    cam.fov = fov;
+    cam.position.set(0, 1.2, z);
+    cam.lookAt(0, 1.2, 0);
+    cam.updateProjectionMatrix();
+  }, [size, camera]);
+  return null;
 }
 
 // ======================
@@ -348,6 +374,7 @@ export default function FortunePage() {
     <div style={{ width: "100vw", height: "100vh", position: "relative", background: "#111" }}>
       <div style={{ position: "absolute", inset: 0 }}>
         <Canvas style={{ width: '100%', height: '100%' }} camera={{ position: [0, 1.2, 4.0], fov: 25 }}>
+          <ResponsiveCamera />
           <ambientLight intensity={0.7} />
           <directionalLight position={[1, 2, 3]} />
           <Avatar vrmUrl="/avatar.vrm" emotion={emotion} />
