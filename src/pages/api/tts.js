@@ -13,11 +13,23 @@ function getVoice(lang, voiceName) {
 
 export default async function handler(req, res) {
   try {
-    const { text, email } = req.body;  // ← emailを受け取る
+        const { text, email, character } = req.body;  // ← character を追加
+
+    // キャラクターごとの声（新規：占い・観光ページ用）
+    const CHARACTER_VOICES = {
+      woman: "ja-JP-Neural2-B",   // 明るめの女性ボイス
+      man: "ja-JP-Neural2-C",     // 男性ボイス
+      witch: "ja-JP-Neural2-D",   // 少し個性的なボイス
+    };
 
     // お客様の声設定を取得
     let voiceName = "ja-JP-Neural2-B";
-    if (email) {
+
+    if (character && CHARACTER_VOICES[character]) {
+      // 占い・観光ページから来た場合：キャラクターの声を使う
+      voiceName = CHARACTER_VOICES[character];
+    } else if (email) {
+      // キオスクから来た場合：今まで通り店舗ごとの声設定を使う
       const { createClient } = await import('@supabase/supabase-js');
       const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL,
