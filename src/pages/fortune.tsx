@@ -10,7 +10,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 // ======================
 // Avatar（kiosk.tsxからそのまま流用）
 // ======================
-function Avatar({ vrmUrl, emotion = 'neutral' }: { vrmUrl: string, emotion?: string }) {
+function Avatar({ vrmUrl, emotion = 'neutral', avatarY = -1.6 }: { vrmUrl: string, emotion?: string, avatarY?: number }) {
   const mouthState = useRef({ speaking: false, value: 0, volume: 0, inhale: false, blinkAfter: false });
   const [vrm, setVrm] = useState<VRM | null>(null);
   const [loading, setLoading] = useState(true);
@@ -84,7 +84,7 @@ function Avatar({ vrmUrl, emotion = 'neutral' }: { vrmUrl: string, emotion?: str
   if (!vrm) return null;
   if (loading) return <mesh><boxGeometry /><meshStandardMaterial color="gray" /></mesh>;
   return (
-    <group position={[0, -1.6, 0]} scale={3}>
+    <group position={[0, avatarY, 0]} scale={3}>
       <primitive object={vrm.scene} />
     </group>
   );
@@ -93,26 +93,22 @@ function Avatar({ vrmUrl, emotion = 'neutral' }: { vrmUrl: string, emotion?: str
 // ======================
 // 画面サイズ（アスペクト比）に応じてカメラを自動調整する
 // ======================
-function ResponsiveCamera() {
+function ResponsiveCamera({ baseFov, baseZ, baseY, targetY }: { baseFov: number; baseZ: number; baseY: number; targetY: number }) {
   const { camera, size } = useThree();
   useEffect(() => {
     const aspect = size.width / size.height;
     const cam = camera as THREE.PerspectiveCamera;
 
-    // 横長（PCなど）は今まで通り、縦長（スマホなど）は画角を広げて
+    // 横長（PCなど）は基準値のまま、縦長（スマホなど）は画角を広げて
     // 全身が横方向にもはみ出さないようにする
-    const baseFov = 25;
-    const fov = aspect < 1 ? Math.min(45, baseFov / aspect) : baseFov;
-
-    // 画角を広げた分、少しカメラを引いて大きさのバランスを保つ
-    const baseZ = 4.0;
+    const fov = aspect < 1 ? Math.min(50, baseFov / aspect) : baseFov;
     const z = aspect < 1 ? baseZ * (baseFov / fov) * 1.6 : baseZ;
 
     cam.fov = fov;
-    cam.position.set(0, 1.2, z);
-    cam.lookAt(0, 1.2, 0);
+    cam.position.set(0, baseY, z);
+    cam.lookAt(0, targetY, 0);
     cam.updateProjectionMatrix();
-  }, [size, camera]);
+  }, [size, camera, baseFov, baseZ, baseY, targetY]);
   return null;
 }
 
@@ -154,6 +150,22 @@ export default function FortunePage() {
   const [isListening, setIsListening] = useState(false);
   const [micSupported, setMicSupported] = useState(true);
   const recognitionRef = useRef<any>(null);
+
+  // カメラ・アバターの位置調整用（?camera=1 を付けた時だけパネルを表示）
+  const [camSettings, setCamSettings] = useState({
+    fov: 30,
+    camZ: 5.5,
+    camY: 1.3,
+    targetY: 1.1,
+    avatarY: -1.4,
+  });
+  const [showCamPanel, setShowCamPanel] = useState(false);
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      setShowCamPanel(params.get('camera') === '1');
+    }
+  }, []);
 
   const isSpeakingRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -373,14 +385,42 @@ export default function FortunePage() {
   return (
     <div style={{ width: "100vw", height: "100vh", position: "relative", background: "#111" }}>
       <div style={{ position: "absolute", inset: 0 }}>
-        <Canvas style={{ width: '100%', height: '100%' }} camera={{ position: [0, 1.2, 4.0], fov: 25 }}>
-          <ResponsiveCamera />
+        <Canvas style={{ width: '100%', height: '100%' }} camera={{ position: [0, camSettings.camY, camSettings.camZ], fov: camSettings.fov }}>
+          <ResponsiveCamera baseFov={camSettings.fov} baseZ={camSettings.camZ} baseY={camSettings.camY} targetY={camSettings.targetY} />
           <ambientLight intensity={0.7} />
           <directionalLight position={[1, 2, 3]} />
-          <Avatar vrmUrl="/avatar.vrm" emotion={emotion} />
-          <OrbitControls target={[0, 1.2, 0]} enableZoom={false} />
+          <Avatar vrmUrl="/avatar.vrm" emotion={emotion} avatarY={camSettings.avatarY} />
+          <OrbitControls target={[0, camSettings.targetY, 0]} enableZoom={false} />
         </Canvas>
       </div>
+
+      {showCamPanel && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, background: 'rgba(0,0,0,0.85)',
+          color: '#fff', padding: 12, zIndex: 9999, fontSize: 12, width: 260,
+        }}>
+          <div style={{ marginBottom: 8, fontWeight: 'bold' }}>カメラ調整パネル</div>
+          {([
+            ['fov', '画角(広いほど引いて見える)', 10, 60],
+            ['camZ', 'カメラの距離', 1, 10],
+            ['camY', 'カメラの高さ', 0, 3],
+            ['targetY', '注視点の高さ(顔の位置目安)', 0, 3],
+            ['avatarY', 'アバター自体の上下位置', -3, 1],
+          ] as const).map(([key, label, min, max]) => (
+            <div key={key} style={{ marginBottom: 10 }}>
+              <div>{label}: {camSettings[key].toFixed(2)}</div>
+              <input
+                type="range" min={min} max={max} step={0.05} value={camSettings[key]}
+                onChange={(e) => setCamSettings(prev => ({ ...prev, [key]: parseFloat(e.target.value) }))}
+                style={{ width: '100%' }}
+              />
+            </div>
+          ))}
+          <div style={{ fontSize: 11, color: '#aaa', marginTop: 8 }}>
+            ちょうど良い数値が見つかったら、その数値をClaudeに伝えてください。
+          </div>
+        </div>
+      )}
 
       {mode === 'menu' && (
         <div style={{
