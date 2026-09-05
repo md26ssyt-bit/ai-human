@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     const CHARACTER_VOICES = {
       woman: { name: "ja-JP-Neural2-B", pitch: 2.0, rate: 1.05 },   // 少し高め・明るめ
       man:   { name: "ja-JP-Chirp3-HD-Enceladus", pitch: -3.0, rate: 0.95 },  // 少し低め・落ち着いた感じ
-      witch: { name: "ja-JP-Chirp3-HD-Gacrux", pitch: -20.0, rate: 0.9 },   // 低めでゆっくり、個性を強調
+      witch: { name: "ja-JP-Chirp3-HD-Gacrux", pitch: -5.0, rate: 0.9},   // 低めでゆっくり、個性を強調
     };
 
     // お客様の声設定を取得
