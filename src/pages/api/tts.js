@@ -15,19 +15,23 @@ export default async function handler(req, res) {
   try {
         const { text, email, character } = req.body;  // ← character を追加
 
-    // キャラクターごとの声（新規：占い・観光ページ用）
+        // キャラクターごとの声（新規：占い・観光ページ用）
     const CHARACTER_VOICES = {
-      woman: "ja-JP-Neural2-B",   // 明るめの女性ボイス
-      man: "ja-JP-Neural2-C",     // 男性ボイス
-      witch: "ja-JP-Neural2-D",   // 少し個性的なボイス
+      woman: { name: "ja-JP-Neural2-B", pitch: 2.0, rate: 1.05 },   // 少し高め・明るめ
+      man:   { name: "ja-JP-Chirp3-HD-Enceladus", pitch: -3.0, rate: 0.95 },  // 少し低め・落ち着いた感じ
+      witch: { name: "ja-JP-Chirp3-HD-Gacrux", pitch: -20.0, rate: 0.9 },   // 低めでゆっくり、個性を強調
     };
 
     // お客様の声設定を取得
     let voiceName = "ja-JP-Neural2-B";
+    let pitch = 0;
+    let speakingRate = 1.0;
 
     if (character && CHARACTER_VOICES[character]) {
-      // 占い・観光ページから来た場合：キャラクターの声を使う
-      voiceName = CHARACTER_VOICES[character];
+      // 占い・観光ページから来た場合：キャラクターの声・音程・速さを使う
+      voiceName = CHARACTER_VOICES[character].name;
+      pitch = CHARACTER_VOICES[character].pitch;
+      speakingRate = CHARACTER_VOICES[character].rate;
     } else if (email) {
       // キオスクから来た場合：今まで通り店舗ごとの声設定を使う
       const { createClient } = await import('@supabase/supabase-js');
@@ -54,7 +58,7 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           input: { text },
           voice: voice,
-          audioConfig: { audioEncoding: "MP3" }
+          audioConfig: { audioEncoding: "MP3", pitch: pitch, speakingRate: speakingRate }
         }),
       }
     );
