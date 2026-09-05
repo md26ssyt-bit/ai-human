@@ -65,12 +65,13 @@ export default async function handler(req, res) {
 
     const data = await ttsRes.json();
 
-    if (data.audioContent) {
+        if (data.audioContent) {
       const buffer = Buffer.from(data.audioContent, "base64");
       res.setHeader("Content-Type", "audio/mp3");
       return res.status(200).send(buffer);
     } else {
-      return res.status(500).json({ error: "No audioContent" });
+      console.error("TTS詳細エラー:", JSON.stringify(data));
+      return res.status(500).json({ error: "No audioContent", details: data });  // ← detailsを追加
     }
 
   } catch (error) {
