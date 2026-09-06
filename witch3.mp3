@@ -1,0 +1,1 @@
+{"error":"No audioContent","details":{"error":{"code":400,"message":"This voice does not support pitch parameters at this time.","status":"INVALID_ARGUMENT"}}}
