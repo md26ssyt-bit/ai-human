@@ -630,6 +630,27 @@ export default function FortunePage() {
         </Canvas>
       </div>
 
+      {/* 言語切り替えボタン（自動判定が違っていても、いつでも手動で切り替えられる） */}
+      <div style={{
+        position: "fixed", top: 12, right: 12, zIndex: 1000,
+        display: "flex", gap: 4, background: "rgba(0,0,0,0.5)", borderRadius: 20, padding: 4,
+      }}>
+        {(['ja', 'en', 'zh', 'id'] as Lang[]).map((l) => (
+          <button
+            key={l}
+            onClick={() => { setLang(l); langRef.current = l; }}
+            style={{
+              border: "none", borderRadius: 16, padding: "4px 10px", fontSize: 12, cursor: "pointer",
+              background: lang === l ? "#fff" : "transparent",
+              color: lang === l ? "#222" : "#fff",
+              fontWeight: lang === l ? "bold" : "normal",
+            }}
+          >
+            {{ ja: '日本語', en: 'English', zh: '中文', id: 'Indonesia' }[l]}
+          </button>
+        ))}
+      </div>
+
       {showCamPanel && (
         <div style={{
           position: 'fixed', top: 0, left: 0, background: 'rgba(0,0,0,0.85)',
