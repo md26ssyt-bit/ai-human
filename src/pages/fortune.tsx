@@ -163,13 +163,19 @@ export default function FortunePage() {
   const recognitionRef = useRef<any>(null);
 
   // カメラ・アバターの位置調整用（?camera=1 を付けた時だけパネルを表示）
-  const [camSettings, setCamSettings] = useState({
-    fov: 28.05,
-    camZ: 5.5,
-    camY: 1.35,
-    targetY: 1.1,
-    avatarY: -2.4,
+  // キャラクターごとに体格・比率が違うため、キャラクターごとに個別の値を持たせる
+  const DEFAULT_CAM = { fov: 28.05, camZ: 5.5, camY: 1.35, targetY: 1.1, avatarY: -2.4 };
+  const [camSettingsByCharacter, setCamSettingsByCharacter] = useState<Record<string, typeof DEFAULT_CAM>>({
+    default: { ...DEFAULT_CAM },
+    woman: { ...DEFAULT_CAM },
+    man: { ...DEFAULT_CAM },
+    witch: { ...DEFAULT_CAM },
   });
+  const camKey = character ?? 'default';
+  const camSettings = camSettingsByCharacter[camKey];
+  const setCamSettings = (updater: (prev: typeof DEFAULT_CAM) => typeof DEFAULT_CAM) => {
+    setCamSettingsByCharacter(prev => ({ ...prev, [camKey]: updater(prev[camKey]) }));
+  };
   const [showCamPanel, setShowCamPanel] = useState(false);
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -410,7 +416,9 @@ export default function FortunePage() {
           position: 'fixed', top: 0, left: 0, background: 'rgba(0,0,0,0.85)',
           color: '#fff', padding: 12, zIndex: 9999, fontSize: 12, width: 260,
         }}>
-          <div style={{ marginBottom: 8, fontWeight: 'bold' }}>カメラ調整パネル</div>
+          <div style={{ marginBottom: 8, fontWeight: 'bold' }}>
+            カメラ調整パネル（対象：{CHARACTERS.find(c => c.id === camKey)?.label || 'デフォルト（未選択時）'}）
+          </div>
           {([
             ['fov', '画角(広いほど引いて見える)', 10, 60],
             ['camZ', 'カメラの距離', 1, 10],
