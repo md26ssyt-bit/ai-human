@@ -26,7 +26,7 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>AIアバター受付キオスク | Digkio Lab.</title>
+        <title>AIアバター受付キオスク | ADIKIO Technologies</title>
         <meta name="description" content="人手不足の受付を、AIアバターが笑顔でサポート。中小企業向け無人受付システム。" />
         <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&display=swap" rel="stylesheet" />
       </Head>
@@ -499,8 +499,8 @@ export default function Home() {
 
       {/* フッター */}
       <footer>
-        <div className="footer-logo">Digkio Lab.</div>
-        <div className="footer-copy">© 2026 Digkio Lab. All rights reserved.</div>
+        <div className="footer-logo">ADIKIO Techologies</div>
+        <div className="footer-copy">© 2026 ADIKIO Technologies All rights reserved.</div>
       </footer>
     </>
   );

@@ -70,7 +70,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     opacity: 0.7
   });
 
-  const texts = ['DIG', 'KIO', 'LAB'];
+  const texts = ['ADI', 'KIO', 'TEC'];
   const lineHeight = stampSize / 3.5
   ;
 

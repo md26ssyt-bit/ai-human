@@ -12,10 +12,11 @@ function getVoice(lang, voiceName) {
 }
 
 // ======================
-// キャラクターごとの声設定（占い・観光ページ用、新規）
+// キャラクターごとの声設定（占い・観光ページ用）
 // 注意：
 //   - Neural2 / Chirp3-HD は pitch（声の高さ）指定に対応していない
 //   - pitch を使いたい場合は WaveNet 系の声にする必要がある
+//   - これらは日本語専用の声です（英語・中国語・インドネシア語では使われません）
 // ======================
 const CHARACTER_VOICES = {
   woman: { name: "ja-JP-Neural2-B", rate: 1.05 },                 // 少し明るめのテンポ
@@ -23,11 +24,21 @@ const CHARACTER_VOICES = {
   witch: { name: "ja-JP-Wavenet-A", rate: 0.9, pitch: -6.0 },     // 低めの声（WaveNetなのでpitch調整可）
 };
 
+// ======================
+// 占い・観光ページから明示的に送られてくる言語（lang）ごとの声設定（新規）
+// 正しい言語コードに注意：中国語（普通話）は "zh-CN" ではなく "cmn-CN" が正式なコードです
+// ======================
+const LANG_VOICE_MAP = {
+  en: { languageCode: "en-US", name: "en-US-Neural2-F" },
+  zh: { languageCode: "cmn-CN", name: "cmn-CN-Standard-D" },
+  id: { languageCode: "id-ID", name: "id-ID-Wavenet-A" },
+};
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
   try {
-    const { text, email, character } = req.body;
+    const { text, email, character, lang } = req.body; // ← lang を新規で受け取る
 
     // お客様の声設定を取得
     let voiceName = "ja-JP-Neural2-B";
@@ -35,7 +46,7 @@ export default async function handler(req, res) {
     let pitch; // 指定が無ければ undefined のまま（＝送らない）
 
     if (character && CHARACTER_VOICES[character]) {
-      // 占い・観光ページから来た場合：キャラクターの声設定を使う
+      // 占い・観光ページから来た場合：キャラクターの声設定を使う（日本語向け）
       const cv = CHARACTER_VOICES[character];
       voiceName = cv.name;
       speakingRate = cv.rate ?? 1.0;
@@ -55,8 +66,16 @@ export default async function handler(req, res) {
       if (customer?.voice_name) voiceName = customer.voice_name;
     }
 
-    const lang = detectLang(text);
-    const voice = getVoice(lang, voiceName);
+    let voice;
+    if (lang && lang !== 'ja' && LANG_VOICE_MAP[lang]) {
+      // 占い・観光ページから、日本語以外の言語が明示的に指定された場合はこちらを優先
+      // （文章の文字種だけでは英語とインドネシア語を区別できないため、明示的な指定が必要）
+      voice = LANG_VOICE_MAP[lang];
+    } else {
+      // それ以外（キオスク、または占い・観光ページで日本語の場合）は、今まで通りの判定
+      const detected = detectLang(text);
+      voice = getVoice(detected, voiceName);
+    }
 
     // audioConfig を組み立てる。
     // pitch は WaveNet 系の声にのみ付与する（Neural2 / Chirp3-HD はエラーになるため）
