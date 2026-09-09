@@ -168,7 +168,7 @@ export default function FortunePage() {
   const [camSettingsByCharacter, setCamSettingsByCharacter] = useState<Record<string, typeof DEFAULT_CAM>>({
     default: { ...DEFAULT_CAM },
     woman: { ...DEFAULT_CAM },
-    man: { ...DEFAULT_CAM },
+    man: { ...DEFAULT_CAM, avatarY: -2.9 },
     witch: { ...DEFAULT_CAM },
   });
   const camKey = character ?? 'default';
