@@ -168,7 +168,7 @@ export default function FortunePage() {
   const [camSettingsByCharacter, setCamSettingsByCharacter] = useState<Record<string, typeof DEFAULT_CAM>>({
     default: { ...DEFAULT_CAM },
     woman: { ...DEFAULT_CAM },
-    man: { ...DEFAULT_CAM, avatarY: -3.0 },
+    man: { ...DEFAULT_CAM, avatarY: -2.9 },
     witch: { ...DEFAULT_CAM },
   });
   const camKey = character ?? 'default';
@@ -454,7 +454,11 @@ export default function FortunePage() {
             {CHARACTERS.map((c) => (
               <button
                 key={c.id}
-                onClick={() => setCharacter(c.id)}
+                onClick={async () => {
+                  if (!audioUnlocked) await unlockAudio();
+                  setCharacter(c.id);
+                  speak('こんにちは！今日はどうしますか？');
+                }}
                 style={{ ...menuButtonStyle, display: "flex", flexDirection: "column", alignItems: "center", padding: "16px 20px" }}
               >
                 <span style={{ fontSize: 28 }}>{c.emoji}</span>
