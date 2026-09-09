@@ -153,6 +153,7 @@ const CRISIS_RESPONSE =
 export default function FortunePage() {
   const [mode, setMode] = useState<Mode>('menu');
   const [character, setCharacter] = useState<CharacterId | null>(null);
+  const characterRef = useRef<CharacterId | null>(null); // 状態更新の反映待ちを避けるための参照
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [messages, setMessages] = useState<{ role: string; text: string }[]>([]);
   const [inputText, setInputText] = useState('');
@@ -204,7 +205,7 @@ export default function FortunePage() {
         const res = await fetch("/api/tts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, character }),
+          body: JSON.stringify({ text, character: characterRef.current }),
         });
         const blob = await res.blob();
         if (lastAudioUrlRef.current) {
@@ -282,7 +283,7 @@ export default function FortunePage() {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, mode: currentMode, character }),
+        body: JSON.stringify({ message: text, mode: currentMode, character: characterRef.current }),
       });
       const data = await response.json();
       let reply = data.reply ?? "少し考えさせてください。";
@@ -456,6 +457,7 @@ export default function FortunePage() {
                 key={c.id}
                 onClick={async () => {
                   if (!audioUnlocked) await unlockAudio();
+                  characterRef.current = c.id;
                   setCharacter(c.id);
                   speak('こんにちは！今日はどうしますか？');
                 }}
