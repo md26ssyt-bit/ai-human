@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import type { CSSProperties } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { VRM, VRMLoaderPlugin } from "@pixiv/three-vrm";
@@ -115,7 +116,13 @@ function ResponsiveCamera({ baseFov, baseZ, baseY, targetY }: { baseFov: number;
 // ======================
 // メニューの種類
 // ======================
-type Mode = 'menu' | 'fortune' | 'travel' | 'free' | 'counseling' | 'fortune_detail';
+type Mode = 'menu' | 'fortune' | 'travel' | 'free' | 'counseling' | 'fortune_detail' | 'travel_detail';
+
+type DetailKind = 'fortune' | 'travel';
+const DETAIL_INFO: Record<DetailKind, { label: string; price: string; amountCents: number; defaultQuestion: string }> = {
+  fortune: { label: '詳細占い', price: '$2.99', amountCents: 299, defaultQuestion: '詳しく占ってください' },
+  travel: { label: '詳細観光プラン', price: '$3.99', amountCents: 399, defaultQuestion: 'おすすめの1日観光プランを詳しく教えてください' },
+};
 
 // ======================
 // 選べるキャラクター
@@ -157,7 +164,7 @@ export default function FortunePage() {
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [messages, setMessages] = useState<{ role: string; text: string }[]>([]);
   const lastQuestionRef = useRef<string>(''); // 詳細版購入時、直前の質問を引き継ぐため
-  const [detailUnlocked, setDetailUnlocked] = useState(false);
+  const [detailUnlocked, setDetailUnlocked] = useState<Set<DetailKind>>(new Set());
   const [showDetailReveal, setShowDetailReveal] = useState(false); // Stripeから戻ってきた直後の「タップして聞く」画面
   const [inputText, setInputText] = useState('');
   const [emotion, setEmotion] = useState('neutral');
@@ -280,7 +287,7 @@ export default function FortunePage() {
   // --- Geminiへ送信（モードに応じてプロンプトの前提を変える） ---
   const sendMessage = async (text: string, currentMode: Mode) => {
     if (!text.trim()) return;
-    if (currentMode === 'fortune') lastQuestionRef.current = text; // 詳細版で引き継ぐために記録
+    if (currentMode === 'fortune' || currentMode === 'travel') lastQuestionRef.current = text; // 詳細版で引き継ぐために記録
     setMessages(prev => [...prev, { role: "user", text }]);
     setIsSending(true);
     try {
@@ -386,10 +393,12 @@ export default function FortunePage() {
     setAudioUnlocked(true);
   };
 
-  // 詳細版をStripeで購入する
-  const handleUnlockDetail = async () => {
+  // 詳細版をStripeで購入する（占い・観光どちらでも使える汎用版）
+  const handleUnlockDetail = async (kind: DetailKind) => {
+    const info = DETAIL_INFO[kind];
     // 決済から戻ってきた後も内容を引き継げるよう保存しておく
-    localStorage.setItem('pendingFortune', JSON.stringify({
+    localStorage.setItem('pendingDetail', JSON.stringify({
+      kind,
       character: characterRef.current,
       question: lastQuestionRef.current,
     }));
@@ -397,9 +406,9 @@ export default function FortunePage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        amount: 299,
+        amount: info.amountCents,
         currency: 'usd',
-        description: `${CHARACTERS.find(c => c.id === character)?.label || ''}による詳細占い`,
+        description: `${CHARACTERS.find(c => c.id === character)?.label || ''}による${info.label}`,
         successUrl: `${window.location.origin}/fortune?unlocked=1`,
       }),
     });
@@ -416,18 +425,19 @@ export default function FortunePage() {
     }
   }, []);
 
-  // 「タップして詳細鑑定を聞く」を押した時の処理
+  // 「タップして詳細版を聞く」を押した時の処理
   const revealDetail = async () => {
-    const saved = localStorage.getItem('pendingFortune');
-    const pending = saved ? JSON.parse(saved) : { character: 'woman', question: '' };
+    const saved = localStorage.getItem('pendingDetail');
+    const pending = saved ? JSON.parse(saved) : { kind: 'fortune' as DetailKind, character: 'woman', question: '' };
+    const kind: DetailKind = pending.kind || 'fortune';
     characterRef.current = pending.character || 'woman';
     setCharacter(pending.character || 'woman');
-    setMode('fortune');
-    setDetailUnlocked(true);
+    setMode(kind);
+    setDetailUnlocked(prev => new Set(prev).add(kind));
     setShowDetailReveal(false);
     if (!audioUnlocked) await unlockAudio();
-    sendMessage(pending.question || '詳しく占ってください', 'fortune_detail');
-    localStorage.removeItem('pendingFortune');
+    sendMessage(pending.question || DETAIL_INFO[kind].defaultQuestion, `${kind}_detail` as Mode);
+    localStorage.removeItem('pendingDetail');
   };
 
   const startMode = async (m: Mode) => {
@@ -440,6 +450,8 @@ export default function FortunePage() {
       travel: 'こんにちは！観光やお店のことなら何でも聞いてください。どのあたりを探していますか？',
       free: 'こんにちは！何でも自由に話しかけてくださいね。',
       counseling: 'こんにちは。今日はどんなことでも、気になっていることをゆっくり話してくださいね。',
+      fortune_detail: '',
+      travel_detail: '',
     };
     const g = greetings[m];
     if (g) {
@@ -574,12 +586,12 @@ export default function FortunePage() {
               </div>
             ))}
           </div>
-          {mode === 'fortune' && !detailUnlocked && messages.some(m => m.role === 'ai') && (
+          {(mode === 'fortune' || mode === 'travel') && !detailUnlocked.has(mode as DetailKind) && messages.some(m => m.role === 'ai') && (
             <button
-              onClick={handleUnlockDetail}
+              onClick={() => handleUnlockDetail(mode as DetailKind)}
               style={{ ...menuButtonStyle, padding: "10px 16px", fontSize: 14, alignSelf: "center", background: "#ffd54f" }}
             >
-              🔮 もっと詳しく見る（$2.99）
+              🔮 {DETAIL_INFO[mode as DetailKind].label}を見る（{DETAIL_INFO[mode as DetailKind].price}）
             </button>
           )}
           <div style={{ display: "flex", gap: 8 }}>
@@ -621,7 +633,7 @@ export default function FortunePage() {
   );
 }
 
-const menuButtonStyle: React.CSSProperties = {
+const menuButtonStyle: CSSProperties = {
   background: "#fff",
   color: "#222",
   border: "none",
