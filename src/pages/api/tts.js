@@ -3,56 +3,67 @@ function detectLang(text) {
   if (/[a-zA-Z]/.test(text)) return "en-US";
   return "ja-JP";
 }
-
+ 
 function getVoice(lang, voiceName) {
   if (lang === "en-US") return { languageCode: "en-US", name: "en-US-Neural2-F" };
   if (lang === "zh-CN") return { languageCode: "zh-CN", name: "zh-CN-Standard-D" };
   // 日本語：カスタム声があれば使う
   return { languageCode: "ja-JP", name: voiceName || "ja-JP-Neural2-B" };
 }
-
+ 
 // ======================
-// キャラクターごとの声設定（占い・観光ページ用）
+// 言語×キャラクターごとの声設定（占い・観光ページ用）
 // 注意：
-//   - Neural2 / Chirp3-HD は pitch（声の高さ）指定に対応していない
-//   - pitch を使いたい場合は WaveNet 系の声にする必要がある
-//   - これらは日本語専用の声です（英語・中国語・インドネシア語では使われません）
+//   - Neural2 は pitch（声の高さ）指定に対応していない
+//   - pitch を使いたい場合は WaveNet 系の声にする必要がある（魔女はどの言語もWaveNet）
+//   - 中国語（普通話）の正式な言語コードは "zh-CN" ではなく "cmn-CN"
 // ======================
 const CHARACTER_VOICES = {
-  woman: { name: "ja-JP-Neural2-B", rate: 1.05 },                 // 少し明るめのテンポ
-  man: { name: "ja-JP-Neural2-C", rate: 0.95 },                   // 少し落ち着いたテンポ
-  witch: { name: "ja-JP-Wavenet-A", rate: 0.9, pitch: -6.0 },     // 低めの声（WaveNetなのでpitch調整可）
+  ja: {
+    woman: { languageCode: "ja-JP", name: "ja-JP-Neural2-B", rate: 1.05 },
+    man: { languageCode: "ja-JP", name: "ja-JP-Neural2-C", rate: 0.95 },
+    witch: { languageCode: "ja-JP", name: "ja-JP-Wavenet-A", rate: 0.9, pitch: -6.0 },
+  },
+  en: {
+    woman: { languageCode: "en-US", name: "en-US-Neural2-F", rate: 1.05 },
+    man: { languageCode: "en-US", name: "en-US-Neural2-D", rate: 0.95 },
+    witch: { languageCode: "en-US", name: "en-US-Wavenet-A", rate: 0.9, pitch: -6.0 },
+  },
+  zh: {
+    woman: { languageCode: "cmn-CN", name: "cmn-CN-Wavenet-A", rate: 1.05 },
+    man: { languageCode: "cmn-CN", name: "cmn-CN-Wavenet-B", rate: 0.95 },
+    witch: { languageCode: "cmn-CN", name: "cmn-CN-Wavenet-C", rate: 0.9, pitch: -6.0 },
+  },
+  id: {
+    woman: { languageCode: "id-ID", name: "id-ID-Wavenet-A", rate: 1.05 },
+    man: { languageCode: "id-ID", name: "id-ID-Wavenet-B", rate: 0.95 },
+    witch: { languageCode: "id-ID", name: "id-ID-Wavenet-C", rate: 0.9, pitch: -6.0 },
+  },
 };
-
-// ======================
-// 占い・観光ページから明示的に送られてくる言語（lang）ごとの声設定（新規）
-// 正しい言語コードに注意：中国語（普通話）は "zh-CN" ではなく "cmn-CN" が正式なコードです
-// ======================
-const LANG_VOICE_MAP = {
-  en: { languageCode: "en-US", name: "en-US-Neural2-F" },
-  zh: { languageCode: "cmn-CN", name: "cmn-CN-Standard-D" },
-  id: { languageCode: "id-ID", name: "id-ID-Wavenet-A" },
-};
-
+ 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
-
+ 
   try {
-    const { text, email, character, lang } = req.body; // ← lang を新規で受け取る
-
-    // お客様の声設定を取得
-    let voiceName = "ja-JP-Neural2-B";
+    const { text, email, character, lang } = req.body;
+ 
+    let voice;
     let speakingRate = 1.0;
     let pitch; // 指定が無ければ undefined のまま（＝送らない）
-
-    if (character && CHARACTER_VOICES[character]) {
-      // 占い・観光ページから来た場合：キャラクターの声設定を使う（日本語向け）
-      const cv = CHARACTER_VOICES[character];
-      voiceName = cv.name;
+ 
+    // lang が日本語以外で送られてきて、対応表にあればそちらを使う。
+    // それ以外（lang未指定、または"ja"）は今まで通り日本語のキャラクター音声を使う。
+    const effectiveLang = (lang && CHARACTER_VOICES[lang]) ? lang : 'ja';
+ 
+    if (character && CHARACTER_VOICES[effectiveLang][character]) {
+      // 占い・観光ページから来た場合：キャラクター＋言語に応じた声を使う
+      const cv = CHARACTER_VOICES[effectiveLang][character];
+      voice = { languageCode: cv.languageCode, name: cv.name };
       speakingRate = cv.rate ?? 1.0;
       pitch = cv.pitch;
     } else if (email) {
-      // キオスクから来た場合：今まで通り店舗ごとの声設定を使う
+      // キオスクから来た場合：今まで通り店舗ごとの声設定を使う（一切変更なし）
+      let voiceName = "ja-JP-Neural2-B";
       const { createClient } = await import('@supabase/supabase-js');
       const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -64,26 +75,22 @@ export default async function handler(req, res) {
         .eq('email', email)
         .single();
       if (customer?.voice_name) voiceName = customer.voice_name;
-    }
-
-    let voice;
-    if (lang && lang !== 'ja' && LANG_VOICE_MAP[lang]) {
-      // 占い・観光ページから、日本語以外の言語が明示的に指定された場合はこちらを優先
-      // （文章の文字種だけでは英語とインドネシア語を区別できないため、明示的な指定が必要）
-      voice = LANG_VOICE_MAP[lang];
-    } else {
-      // それ以外（キオスク、または占い・観光ページで日本語の場合）は、今まで通りの判定
+ 
       const detected = detectLang(text);
       voice = getVoice(detected, voiceName);
+    } else {
+      // それ以外（character・emailどちらも無い場合）
+      const detected = detectLang(text);
+      voice = getVoice(detected, "ja-JP-Neural2-B");
     }
-
+ 
     // audioConfig を組み立てる。
-    // pitch は WaveNet 系の声にのみ付与する（Neural2 / Chirp3-HD はエラーになるため）
+    // pitch は WaveNet 系の声にのみ付与する（Neural2 はエラーになるため）
     const audioConfig = { audioEncoding: "MP3", speakingRate };
     if (pitch !== undefined && voice.name.includes("Wavenet")) {
       audioConfig.pitch = pitch;
     }
-
+ 
     const ttsRes = await fetch(
       `https://texttospeech.googleapis.com/v1/text:synthesize?key=${process.env.GOOGLE_API_KEY}`,
       {
@@ -96,9 +103,9 @@ export default async function handler(req, res) {
         }),
       }
     );
-
+ 
     const data = await ttsRes.json();
-
+ 
     if (data.audioContent) {
       const buffer = Buffer.from(data.audioContent, "base64");
       res.setHeader("Content-Type", "audio/mp3");
@@ -107,7 +114,7 @@ export default async function handler(req, res) {
       console.error("TTS詳細エラー:", JSON.stringify(data));
       return res.status(500).json({ error: "No audioContent", details: data });
     }
-
+ 
   } catch (error) {
     console.error("TTSエラー:", error);
     return res.status(500).json({ audioContent: null });
