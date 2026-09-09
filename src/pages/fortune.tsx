@@ -115,7 +115,7 @@ function ResponsiveCamera({ baseFov, baseZ, baseY, targetY }: { baseFov: number;
 // ======================
 // メニューの種類
 // ======================
-type Mode = 'menu' | 'fortune' | 'travel' | 'free' | 'counseling';
+type Mode = 'menu' | 'fortune' | 'travel' | 'free' | 'counseling' | 'fortune_detail';
 
 // ======================
 // 選べるキャラクター
@@ -156,6 +156,9 @@ export default function FortunePage() {
   const characterRef = useRef<CharacterId | null>(null); // 状態更新の反映待ちを避けるための参照
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [messages, setMessages] = useState<{ role: string; text: string }[]>([]);
+  const lastQuestionRef = useRef<string>(''); // 詳細版購入時、直前の質問を引き継ぐため
+  const [detailUnlocked, setDetailUnlocked] = useState(false);
+  const [showDetailReveal, setShowDetailReveal] = useState(false); // Stripeから戻ってきた直後の「タップして聞く」画面
   const [inputText, setInputText] = useState('');
   const [emotion, setEmotion] = useState('neutral');
   const [isSending, setIsSending] = useState(false);
@@ -277,6 +280,7 @@ export default function FortunePage() {
   // --- Geminiへ送信（モードに応じてプロンプトの前提を変える） ---
   const sendMessage = async (text: string, currentMode: Mode) => {
     if (!text.trim()) return;
+    if (currentMode === 'fortune') lastQuestionRef.current = text; // 詳細版で引き継ぐために記録
     setMessages(prev => [...prev, { role: "user", text }]);
     setIsSending(true);
     try {
@@ -382,6 +386,50 @@ export default function FortunePage() {
     setAudioUnlocked(true);
   };
 
+  // 詳細版をStripeで購入する
+  const handleUnlockDetail = async () => {
+    // 決済から戻ってきた後も内容を引き継げるよう保存しておく
+    localStorage.setItem('pendingFortune', JSON.stringify({
+      character: characterRef.current,
+      question: lastQuestionRef.current,
+    }));
+    const res = await fetch('/api/create-payment-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: 299,
+        currency: 'usd',
+        description: `${CHARACTERS.find(c => c.id === character)?.label || ''}による詳細占い`,
+        successUrl: `${window.location.origin}/fortune?unlocked=1`,
+      }),
+    });
+    const data = await res.json();
+    if (data.url) window.location.href = data.url;
+  };
+
+  // Stripeの決済から戻ってきたかどうかを確認する
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('unlocked') === '1') {
+      setShowDetailReveal(true);
+    }
+  }, []);
+
+  // 「タップして詳細鑑定を聞く」を押した時の処理
+  const revealDetail = async () => {
+    const saved = localStorage.getItem('pendingFortune');
+    const pending = saved ? JSON.parse(saved) : { character: 'woman', question: '' };
+    characterRef.current = pending.character || 'woman';
+    setCharacter(pending.character || 'woman');
+    setMode('fortune');
+    setDetailUnlocked(true);
+    setShowDetailReveal(false);
+    if (!audioUnlocked) await unlockAudio();
+    sendMessage(pending.question || '詳しく占ってください', 'fortune_detail');
+    localStorage.removeItem('pendingFortune');
+  };
+
   const startMode = async (m: Mode) => {
     if (!audioUnlocked) await unlockAudio();
     setMode(m);
@@ -439,6 +487,18 @@ export default function FortunePage() {
           <div style={{ fontSize: 11, color: '#aaa', marginTop: 8 }}>
             ちょうど良い数値が見つかったら、その数値をClaudeに伝えてください。
           </div>
+        </div>
+      )}
+
+      {showDetailReveal && (
+        <div style={{
+          position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", gap: 16, background: "rgba(0,0,0,0.6)",
+        }}>
+          <div style={{ color: "#fff", fontSize: 20, fontWeight: "bold", textAlign: "center" }}>
+            ご購入ありがとうございます！
+          </div>
+          <button onClick={revealDetail} style={menuButtonStyle}>🔮 タップして詳細鑑定を聞く</button>
         </div>
       )}
 
@@ -514,6 +574,14 @@ export default function FortunePage() {
               </div>
             ))}
           </div>
+          {mode === 'fortune' && !detailUnlocked && messages.some(m => m.role === 'ai') && (
+            <button
+              onClick={handleUnlockDetail}
+              style={{ ...menuButtonStyle, padding: "10px 16px", fontSize: 14, alignSelf: "center", background: "#ffd54f" }}
+            >
+              🔮 もっと詳しく見る（$2.99）
+            </button>
+          )}
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={() => setMode('menu')} style={{ ...menuButtonStyle, padding: "8px 12px", fontSize: 14 }}>← 戻る</button>
             <input

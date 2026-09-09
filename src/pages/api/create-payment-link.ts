@@ -7,13 +7,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'POST') return res.status(405).end();
 
   try {
-    const { amount, description, companyName } = req.body;
+        const { amount, description, companyName, currency, successUrl } = req.body;
 
     const paymentLink = await stripe.paymentLinks.create({
       line_items: [
         {
           price_data: {
-            currency: 'jpy',
+            currency: currency || 'jpy',
             product_data: {
               name: description || `${companyName}様 ご請求`,
             },
@@ -22,6 +22,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           quantity: 1,
         },
       ],
+      ...(successUrl && {
+        after_completion: {
+          type: 'redirect',
+          redirect: { url: successUrl },
+        },
+      }),
     });
 
     return res.status(200).json({ url: paymentLink.url });
