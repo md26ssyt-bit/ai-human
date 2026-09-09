@@ -27,17 +27,17 @@ const CHARACTER_VOICES = {
   en: {
     woman: { languageCode: "en-US", name: "en-US-Neural2-F", rate: 1.05 },
     man: { languageCode: "en-US", name: "en-US-Neural2-D", rate: 0.95 },
-    witch: { languageCode: "en-US", name: "en-US-Wavenet-A", rate: 0.9, pitch: -6.0 },
+    witch: { languageCode: "en-US", name: "en-US-Wavenet-C", rate: 0.9, pitch: -6.0 },
   },
   zh: {
     woman: { languageCode: "cmn-CN", name: "cmn-CN-Wavenet-A", rate: 1.05 },
     man: { languageCode: "cmn-CN", name: "cmn-CN-Wavenet-B", rate: 0.95 },
-    witch: { languageCode: "cmn-CN", name: "cmn-CN-Wavenet-C", rate: 0.9, pitch: -6.0 },
+    witch: { languageCode: "cmn-CN", name: "cmn-CN-Wavenet-D", rate: 0.9, pitch: -6.0 },
   },
   id: {
     woman: { languageCode: "id-ID", name: "id-ID-Wavenet-A", rate: 1.05 },
     man: { languageCode: "id-ID", name: "id-ID-Wavenet-B", rate: 0.95 },
-    witch: { languageCode: "id-ID", name: "id-ID-Wavenet-C", rate: 0.9, pitch: -6.0 },
+    witch: { languageCode: "id-ID", name: "id-ID-Wavenet-D", rate: 0.9, pitch: -6.0 },
   },
 };
  
