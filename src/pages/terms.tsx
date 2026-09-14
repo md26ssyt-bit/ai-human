@@ -58,7 +58,7 @@ export default function Terms() {
         <h2>7. お問い合わせ</h2>
         <p>
           本規約に関するお問い合わせは、
-          <a href="mailto:contact@adikio-technologies.example">contact@adikio-technologies.example</a>
+          <a href="mailto:md26ssyt@gmail.com">md26ssyt@gmail.com</a>
           までご連絡ください。
         </p>
       </article>

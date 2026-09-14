@@ -27,7 +27,7 @@ export default function Refund() {
         <h2>3. 返金のご請求方法</h2>
         <p>
           上記1の不具合に該当する場合、決済日時・決済に使用したメールアドレスを添えて、
-          <a href="mailto:contact@adikio-technologies.example">contact@adikio-technologies.example</a>
+          <a href="mailto:md26ssyt@gmail.com">md26ssyt@gmail.com</a>
           までご連絡ください。内容を確認の上、対応いたします。
         </p>
 

@@ -52,7 +52,7 @@ export default function Privacy() {
         <h2>6. お問い合わせ</h2>
         <p>
           本ポリシーに関するお問い合わせ、または個人情報の開示・訂正・削除のご請求は、
-          <a href="mailto:contact@adikio-technologies.example">contact@adikio-technologies.example</a>
+          <a href="mailto:md26ssyt@gmail.com">md26ssyt@gmail.com</a>
           までご連絡ください。
         </p>
       </article>
