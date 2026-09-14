@@ -95,7 +95,7 @@ export default function Company() {
             </div>
             <div>
               <dt>お問い合わせ</dt>
-              <dd><a href="mailto:contact@adikio-technologies.example">contact@adikio-technologies.example</a></dd>
+              <dd><a href="mailto:md26ssyt@gmail.com">md26ssyt@gmail.com</a></dd>
             </div>
             <div>
               <dt>事業内容</dt>
