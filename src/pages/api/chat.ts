@@ -6,6 +6,28 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+// 無料枠の回数制限を書き込むための管理者権限クライアント（RLSをバイパス）
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+// mode ごとの「無料枠グループ」と1日の上限回数
+const FREE_LIMITS: Record<string, { group: string; limit: number }> = {
+  free: { group: 'free', limit: 5 },
+  counseling: { group: 'counseling', limit: 10 },
+  fortune: { group: 'fortune_travel', limit: 8 },
+  travel: { group: 'fortune_travel', limit: 8 },
+};
+
+function getClientIp(req: NextApiRequest): string {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string' && forwarded.length > 0) {
+    return forwarded.split(',')[0].trim();
+  }
+  return req.socket.remoteAddress || 'unknown';
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
@@ -32,6 +54,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
            'あなたは日本の観光案内のプロです。有料の詳細プランとして、丸1日分の具体的な' +
           '観光プランを、①午前②昼食③午後④夕方以降の順で、移動手段や所要時間の目安も含めて' +
           '具体的に案内してください。全体で10〜13文程度で提案してください。',
+        travel:
+          'あなたは親しみやすい日本の観光案内ガイドです。ユーザーの興味や現在地に合わせて、' +
+          'おすすめのスポットや過ごし方を気さくに提案してください。',
         free: 'あなたは気さくな会話相手です。自由に楽しく雑談してください。',
         counseling:
           'あなたは優しく話を聞く相談相手です。相手の気持ちを否定せず、' +
@@ -40,6 +65,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           '専門機関（心療内科、公認心理師など）への相談を自然な形で勧めてください。',
       };
       const modeSystemPrompt = modePrompts[mode] || modePrompts.free;
+
+      // ====== 無料枠の回数制限チェック（詳細版=fortune_detail/travel_detailは対象外＝購入済み扱い）======
+      const limitConfig = FREE_LIMITS[mode];
+      if (limitConfig) {
+        const identifier = getClientIp(req);
+        const { data: usageData, error: usageError } = await supabaseAdmin.rpc(
+          'increment_fortune_usage',
+          {
+            p_identifier: identifier,
+            p_mode_group: limitConfig.group,
+            p_limit: limitConfig.limit,
+          }
+        );
+
+        if (usageError) {
+          // 制限チェック自体が失敗した場合は、安全側に倒して通常通り応答する
+          console.error('利用回数チェックエラー:', usageError);
+        } else {
+          const allowed = usageData?.[0]?.allowed;
+          if (allowed === false) {
+            return res.status(200).json({
+              reply:
+                '本日の無料回数の上限に達しました。また明日お話しましょう🌙 続きが気になる方はプレミアムプランもぜひ[EMOTION:neutral]',
+              limitReached: true,
+              modeGroup: limitConfig.group,
+            });
+          }
+        }
+      }
+      // ====== ここまで ======
 
       const modeApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
       const modeResponse = await fetch(modeApiUrl, {
