@@ -133,6 +133,7 @@ type Lang = 'ja' | 'en' | 'zh' | 'id';
 
 const UI: Record<Lang, {
   chooseCharacter: string;
+  topTitle: string;
   characterLabels: Record<'woman' | 'man' | 'witch', string>;
   menuHeading: string;
   btnFortune: string;
@@ -162,6 +163,7 @@ const UI: Record<Lang, {
 }> = {
   ja: {
     chooseCharacter: 'お話しするキャラクターを選んでください',
+    topTitle: '心に灯るあなたの部屋',
     characterLabels: { woman: '女性', man: '男性', witch: '魔女' },
     menuHeading: '今日はどうしますか？',
     btnFortune: '🔮 占い・性格診断',
@@ -201,6 +203,7 @@ const UI: Record<Lang, {
   },
   en: {
     chooseCharacter: 'Please choose who you would like to talk to',
+    topTitle: 'A Room Where Your Heart Glows',
     characterLabels: { woman: 'Woman', man: 'Man', witch: 'Witch' },
     menuHeading: 'What would you like to do today?',
     btnFortune: '🔮 Fortune & Personality',
@@ -239,6 +242,7 @@ const UI: Record<Lang, {
   },
   zh: {
     chooseCharacter: '请选择您想对话的角色',
+    topTitle: '点亮心灯的房间',
     characterLabels: { woman: '女性', man: '男性', witch: '女巫' },
     menuHeading: '今天想做点什么呢？',
     btnFortune: '🔮 占卜・性格测试',
@@ -276,6 +280,7 @@ const UI: Record<Lang, {
   },
   id: {
     chooseCharacter: 'Silakan pilih karakter yang ingin diajak bicara',
+    topTitle: 'Ruang Tempat Hatimu Bersinar',
     characterLabels: { woman: 'Wanita', man: 'Pria', witch: 'Penyihir' },
     menuHeading: 'Hari ini mau melakukan apa?',
     btnFortune: '🔮 Ramalan & Kepribadian',
@@ -771,15 +776,18 @@ export default function FortunePage() {
       {character === null && (
         <div style={{
           position: "absolute", inset: 0, display: "flex", flexDirection: "column",
-          alignItems: "center", background: "rgba(0,0,0,0.6)",
+          alignItems: "center", justifyContent: "flex-end", paddingBottom: 60, gap: 16,
+          pointerEvents: "none", background: "rgba(0,0,0,0.6)",
         }}>
           <div style={{
-            width: "100%", textAlign: "center", color: "#fff", fontSize: 20, fontWeight: "bold",
-            padding: "24px 16px 12px", pointerEvents: "none", textShadow: "0 2px 6px rgba(0,0,0,0.8)",
+            position: "absolute", top: 32, left: 0, right: 0, textAlign: "center",
+            color: "#fff", fontSize: 26, fontWeight: "bold", textShadow: "0 2px 6px rgba(0,0,0,0.8)",
           }}>
+            {t.topTitle}
+          </div>
+          <div style={{ color: "#fff", fontSize: 16, fontWeight: "bold", marginBottom: 8, pointerEvents: "none" }}>
             {t.chooseCharacter}
           </div>
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", paddingBottom: 60, gap: 16, width: "100%", alignItems: "center" }}>
           <div style={{ display: "flex", gap: 12, pointerEvents: "auto" }}>
             {CHARACTERS.map((c) => (
               <button
@@ -796,7 +804,6 @@ export default function FortunePage() {
                 <span style={{ marginTop: 4 }}>{t.characterLabels[c.id]}</span>
               </button>
             ))}
-          </div>
           </div>
         </div>
       )}
