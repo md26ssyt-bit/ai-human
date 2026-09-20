@@ -79,16 +79,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
  
-      // ====== 無料枠の回数制限チェック（詳細版=fortune_detail/travel_detailは対象外＝購入済み扱い、サブスク会員も対象外）======
+      // ====== 無料枠 / プレミアム会員 それぞれの回数制限チェック ======
+      // 詳細版（fortune_detail/travel_detail）は購入済み扱いなので対象外
       const limitConfig = FREE_LIMITS[mode];
-      if (limitConfig && !isPremiumMember) {
-        const identifier = getClientIp(req);
+      if (limitConfig) {
+        // プレミアム会員は「メールアドレス単位」で1日300回、無料ユーザーは「IP単位」でモードごとの回数
+        const identifier = isPremiumMember && email ? `premium:${email}` : getClientIp(req);
+        const groupName = isPremiumMember ? 'premium_daily' : limitConfig.group;
+        const limitCount = isPremiumMember ? 200 : limitConfig.limit;
+ 
         const { data: usageData, error: usageError } = await supabaseAdmin.rpc(
           'increment_fortune_usage',
           {
             p_identifier: identifier,
-            p_mode_group: limitConfig.group,
-            p_limit: limitConfig.limit,
+            p_mode_group: groupName,
+            p_limit: limitCount,
           }
         );
  
@@ -99,10 +104,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const allowed = usageData?.[0]?.allowed;
           if (allowed === false) {
             return res.status(200).json({
-              reply:
-                '本日の無料回数の上限に達しました。また明日お話しましょう🌙 続きが気になる方はプレミアムプランもぜひ[EMOTION:neutral]',
+              reply: isPremiumMember
+                ? '本日はたくさんお話しいただきました🌙 また明日、続きをお話ししましょう[EMOTION:neutral]'
+                : '本日の無料回数の上限に達しました。また明日お話しましょう🌙 続きが気になる方はプレミアムプランもぜひ[EMOTION:neutral]',
               limitReached: true,
-              modeGroup: limitConfig.group,
+              modeGroup: groupName,
             });
           }
         }
