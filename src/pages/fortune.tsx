@@ -138,6 +138,13 @@ const UI: Record<Lang, {
   btnTravel: string;
   btnCounseling: string;
   btnFree: string;
+  btnPremium: string;
+  premiumModalTitle: string;
+  premiumModalDesc: string;
+  premiumEmailPlaceholder: string;
+  premiumSubmit: string;
+  premiumCancel: string;
+  premiumThanks: string;
   back: string;
   send: string;
   talk: string;
@@ -159,6 +166,13 @@ const UI: Record<Lang, {
     btnTravel: '🗾 観光・お店を教えてもらう',
     btnCounseling: '🌱 心の相談',
     btnFree: '💬 自由に話す',
+    btnPremium: '✨ プレミアムプランに登録',
+    premiumModalTitle: 'プレミアムプラン（月額$9.99）',
+    premiumModalDesc: '毎日の回数制限なしでお話しいただけます。ご登録に使うメールアドレスを入力してください。',
+    premiumEmailPlaceholder: 'メールアドレス',
+    premiumSubmit: '登録手続きへ進む',
+    premiumCancel: 'キャンセル',
+    premiumThanks: 'ご登録ありがとうございます！プレミアムプランへようこそ🎉',
     back: '← 戻る',
     send: '送信',
     talk: '話す',
@@ -190,6 +204,13 @@ const UI: Record<Lang, {
     btnTravel: '🗾 Travel & Local Spots',
     btnCounseling: '🌱 Talk About Your Feelings',
     btnFree: '💬 Just Chat',
+    btnPremium: '✨ Join Premium Plan',
+    premiumModalTitle: 'Premium Plan ($9.99/month)',
+    premiumModalDesc: 'Chat without daily limits. Please enter the email address you want to use.',
+    premiumEmailPlaceholder: 'Email address',
+    premiumSubmit: 'Continue to checkout',
+    premiumCancel: 'Cancel',
+    premiumThanks: 'Thank you for subscribing! Welcome to Premium 🎉',
     back: '← Back',
     send: 'Send',
     talk: 'Talk',
@@ -220,6 +241,13 @@ const UI: Record<Lang, {
     btnTravel: '🗾 旅游・美食推荐',
     btnCounseling: '🌱 心事倾诉',
     btnFree: '💬 随便聊聊',
+    btnPremium: '✨ 加入高级会员',
+    premiumModalTitle: '高级会员（每月 $9.99）',
+    premiumModalDesc: '不受每日次数限制，畅快聊天。请输入用于注册的电子邮箱。',
+    premiumEmailPlaceholder: '电子邮箱',
+    premiumSubmit: '前往付款',
+    premiumCancel: '取消',
+    premiumThanks: '感谢您的订阅！欢迎加入高级会员🎉',
     back: '← 返回',
     send: '发送',
     talk: '说话',
@@ -249,6 +277,13 @@ const UI: Record<Lang, {
     btnTravel: '🗾 Info Wisata & Tempat Makan',
     btnCounseling: '🌱 Curhat',
     btnFree: '💬 Ngobrol Santai',
+    btnPremium: '✨ Berlangganan Paket Premium',
+    premiumModalTitle: 'Paket Premium ($9.99/bulan)',
+    premiumModalDesc: 'Mengobrol tanpa batas harian. Silakan masukkan alamat email yang ingin digunakan.',
+    premiumEmailPlaceholder: 'Alamat email',
+    premiumSubmit: 'Lanjut ke pembayaran',
+    premiumCancel: 'Batal',
+    premiumThanks: 'Terima kasih telah berlangganan! Selamat datang di Premium 🎉',
     back: '← Kembali',
     send: 'Kirim',
     talk: 'Bicara',
@@ -322,6 +357,10 @@ export default function FortunePage() {
   const lastQuestionRef = useRef<string>(''); // 詳細版購入時、直前の質問を引き継ぐため
   const [detailUnlocked, setDetailUnlocked] = useState<Set<DetailKind>>(new Set());
   const [showDetailReveal, setShowDetailReveal] = useState(false); // Stripeから戻ってきた直後の「タップして聞く」画面
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [premiumEmail, setPremiumEmail] = useState('');
+  const [premiumLoading, setPremiumLoading] = useState(false);
+  const [showPremiumThanks, setShowPremiumThanks] = useState(false);
   const [inputText, setInputText] = useState('');
   const [emotion, setEmotion] = useState('neutral');
   const [isSending, setIsSending] = useState(false);
@@ -450,7 +489,13 @@ export default function FortunePage() {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, mode: currentMode, character: characterRef.current, lang: langRef.current }),
+        body: JSON.stringify({
+          message: text,
+          mode: currentMode,
+          character: characterRef.current,
+          lang: langRef.current,
+          email: typeof window !== 'undefined' ? localStorage.getItem('memberEmail') : null,
+        }),
       });
       const data = await response.json();
       let reply = data.reply ?? "少し考えさせてください。";
@@ -580,7 +625,32 @@ export default function FortunePage() {
     if (params.get('unlocked') === '1') {
       setShowDetailReveal(true);
     }
+    if (params.get('subscribed') === '1') {
+      setShowPremiumThanks(true);
+    }
   }, []);
+
+  // プレミアムプラン登録：メールアドレスを送ってCheckout Sessionへ遷移
+  const handleSubscribe = async () => {
+    if (!premiumEmail || !premiumEmail.includes('@')) return;
+    setPremiumLoading(true);
+    localStorage.setItem('memberEmail', premiumEmail); // 会員判定に使うため保存しておく
+    try {
+      const res = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: premiumEmail, lang }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        setPremiumLoading(false);
+      }
+    } catch {
+      setPremiumLoading(false);
+    }
+  };
 
   // 「タップして詳細版を聞く」を押した時の処理
   const revealDetail = async () => {
@@ -735,6 +805,59 @@ export default function FortunePage() {
           <button onClick={() => startMode('travel')} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>{t.btnTravel}</button>
           <button onClick={() => startMode('counseling')} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>{t.btnCounseling}</button>
           <button onClick={() => startMode('free')} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>{t.btnFree}</button>
+          <button
+            onClick={() => setShowPremiumModal(true)}
+            style={{ ...menuButtonStyle, pointerEvents: "auto", background: "#7c4dff", color: "#fff" }}
+          >
+            {t.btnPremium}
+          </button>
+        </div>
+      )}
+
+      {showPremiumModal && (
+        <div style={{
+          position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50,
+        }}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 24, width: "85%", maxWidth: 360 }}>
+            <div style={{ fontWeight: "bold", fontSize: 18, marginBottom: 8 }}>{t.premiumModalTitle}</div>
+            <div style={{ fontSize: 14, color: "#555", marginBottom: 16 }}>{t.premiumModalDesc}</div>
+            <input
+              type="email"
+              value={premiumEmail}
+              onChange={(e) => setPremiumEmail(e.target.value)}
+              placeholder={t.premiumEmailPlaceholder}
+              style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #ccc", marginBottom: 16, fontSize: 14 }}
+            />
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setShowPremiumModal(false)}
+                style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #ccc", background: "#fff" }}
+              >
+                {t.premiumCancel}
+              </button>
+              <button
+                onClick={handleSubscribe}
+                disabled={premiumLoading || !premiumEmail.includes('@')}
+                style={{ padding: "8px 14px", borderRadius: 8, border: "none", background: "#7c4dff", color: "#fff", opacity: premiumLoading ? 0.6 : 1 }}
+              >
+                {premiumLoading ? '...' : t.premiumSubmit}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPremiumThanks && (
+        <div style={{
+          position: "absolute", inset: 0, background: "rgba(0,0,0,0.75)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50,
+        }}
+          onClick={() => setShowPremiumThanks(false)}
+        >
+          <div style={{ background: "#fff", borderRadius: 12, padding: 24, width: "85%", maxWidth: 360, textAlign: "center" }}>
+            {t.premiumThanks}
+          </div>
         </div>
       )}
 

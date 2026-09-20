@@ -1,17 +1,16 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
-
+ 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
-
+ 
 // 無料枠の回数制限を書き込むための管理者権限クライアント（RLSをバイパス）
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
-
+ 
 // mode ごとの「無料枠グループ」と1日の上限回数
 const FREE_LIMITS: Record<string, { group: string; limit: number }> = {
   free: { group: 'free', limit: 5 },
@@ -19,7 +18,7 @@ const FREE_LIMITS: Record<string, { group: string; limit: number }> = {
   fortune: { group: 'fortune_travel', limit: 8 },
   travel: { group: 'fortune_travel', limit: 8 },
 };
-
+ 
 function getClientIp(req: NextApiRequest): string {
   const forwarded = req.headers['x-forwarded-for'];
   if (typeof forwarded === 'string' && forwarded.length > 0) {
@@ -27,14 +26,14 @@ function getClientIp(req: NextApiRequest): string {
   }
   return req.socket.remoteAddress || 'unknown';
 }
-
+ 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
-
+ 
    try {
     const { message, email, mode } = req.body;
     const apiKey = process.env.GEMINI_API_KEY;
-
+ 
     // ====== 占い・観光・雑談・心の相談モード（新規）======
     // mode が送られてきた場合のみここで処理して返す。
     // mode が無い場合（＝今まで通りのキオスクからのリクエスト）は、
@@ -65,10 +64,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           '専門機関（心療内科、公認心理師など）への相談を自然な形で勧めてください。',
       };
       const modeSystemPrompt = modePrompts[mode] || modePrompts.free;
-
-      // ====== 無料枠の回数制限チェック（詳細版=fortune_detail/travel_detailは対象外＝購入済み扱い）======
+ 
+      // ====== サブスク会員かどうかを確認（会員なら無料枠チェックをスキップ）======
+      let isPremiumMember = false;
+      if (email && typeof email === 'string') {
+        const { data: subData } = await supabaseAdmin
+          .from('fortune_subscriptions')
+          .select('status')
+          .eq('email', email)
+          .maybeSingle();
+        if (subData?.status === 'active') {
+          isPremiumMember = true;
+        }
+      }
+ 
+      // ====== 無料枠の回数制限チェック（詳細版=fortune_detail/travel_detailは対象外＝購入済み扱い、サブスク会員も対象外）======
       const limitConfig = FREE_LIMITS[mode];
-      if (limitConfig) {
+      if (limitConfig && !isPremiumMember) {
         const identifier = getClientIp(req);
         const { data: usageData, error: usageError } = await supabaseAdmin.rpc(
           'increment_fortune_usage',
@@ -78,7 +90,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             p_limit: limitConfig.limit,
           }
         );
-
+ 
         if (usageError) {
           // 制限チェック自体が失敗した場合は、安全側に倒して通常通り応答する
           console.error('利用回数チェックエラー:', usageError);
@@ -95,7 +107,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
       // ====== ここまで ======
-
+ 
       const modeApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
       const modeResponse = await fetch(modeApiUrl, {
         method: 'POST',
@@ -117,7 +129,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           ],
         }),
       });
-
+ 
       const modeData = await modeResponse.json();
       const modeRawText =
         modeData.candidates?.[0]?.content?.parts?.[0]?.text ?? '少しお待ちください';
@@ -125,7 +137,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .replace(/^reply[:：\s]*/i, '')
         .replace(/^回答[:：\s]*/i, '')
         .trim();
-
+ 
       return res.status(200).json({ reply: modeReply });
     }
     // ====== ここまで新規追加 ======
@@ -134,7 +146,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let companyName = '不明';
     let staffInfo = '';
     let customerId = '';
-
+ 
     if (email) {
       const { data } = await supabase
         .from('customers')
@@ -148,7 +160,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
      
       console.log("systemPrompt:", systemPrompt);
       console.log("greeting:", data?.greeting);
-
+ 
       if (customerId) {
         const { data: staffData } = await supabase
           .from('staff')
@@ -159,13 +171,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
     }
-
+ 
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-
+ 
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-
+ 
       body: JSON.stringify({
         contents: [
           {
@@ -188,7 +200,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ],
       }),
     });
-
+ 
     const data = await response.json();
     const rawText =
       data.candidates?.[0]?.content?.parts?.[0]?.text ?? '少しお待ちください';
@@ -197,20 +209,20 @@ console.log("rawText:", rawText);  // ← 追加
       .replace(/^reply[:：\s]*/i, '')
       .replace(/^回答[:：\s]*/i, '')
       .trim();
-
+ 
     const notifyMatch = reply.match(/\[NOTIFY:(.+?):(.+?)\]/);
     if (notifyMatch) {
       const staffName = notifyMatch[1];
       const notifyMessage = notifyMatch[2];
       reply = reply.replace(/\[NOTIFY:.+?\]/, '').trim();
-
+ 
       let targetEmail = notifyEmail;
       if (staffInfo) {
         const staffList = staffInfo.split(',');
         const found = staffList.find((s: string) => s.startsWith(staffName));
         if (found) targetEmail = found.split(':')[1];
       }
-
+ 
       try {
        const baseUrl = 'https://ai-human-eta.vercel.app';
   await fetch(`${baseUrl}/api/notify`, {
@@ -226,7 +238,7 @@ console.log("rawText:", rawText);  // ← 追加
   console.error('通知エラー:', e);
       }
     }
-
+ 
     return res.status(200).json({ reply });
   } catch (error) {
     console.error('APIエラー:', error);
