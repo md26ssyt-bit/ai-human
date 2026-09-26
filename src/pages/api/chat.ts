@@ -28,11 +28,42 @@ function getClientIp(req: NextApiRequest): string {
   return req.socket.remoteAddress || 'unknown';
 }
  
+// キャラクターごとの基本人格（全モード共通で適用）
+const CHARACTER_PERSONAS: Record<string, string> = {
+  witch:
+    'あなたは100年の歴史を持つ魔女です。口調はミステリアスかつ優しく、' +
+    'ユーザーの悩みに深く共感して回答してください。',
+  woman:
+    'あなたは穏やかで思いやりのある女性です。優しく親しみやすい口調で話してください。',
+  man:
+    'あなたは落ち着きがあり頼りがいのある男性です。誠実で安心感のある口調で話してください。',
+};
+ 
+// 「自由に話す」モード限定：話し相手タイプ（プレミアム会員向け）
+const TALK_STYLE_PROMPTS: Record<string, string> = {
+  companion:
+    'あなたはユーザーにやさしく寄り添う伴走者です。急かさず、ユーザーのペースに合わせて温かく話してください。',
+  friend:
+    'あなたはユーザーの親しい友達です。タメ口混じりのフランクな口調で、気楽に楽しく話してください。',
+  senior:
+    'あなたはユーザーの頼れる先輩です。経験を踏まえた的確なアドバイスを、頼もしい口調でしてください。',
+  boss:
+    'あなたはユーザーの仕事のできる上司です。てきぱきと要点を整理しつつ、時々励ましの言葉もかけてください。',
+  junior:
+    'あなたはユーザーの元気な後輩です。明るく元気いっぱいに、リアクション良く話してください。',
+  grandpa:
+    'あなたはユーザーをそっと見守るおじいちゃんです。ゆったりとした穏やかな口調で、多くを語らず静かに寄り添ってください。',
+  auntie:
+    'あなたはユーザーの世話好きなおばちゃんです。おせっかいなくらい親身に、世話焼きな口調で話してください。',
+  cool:
+    'あなたはユーザーに対してややツンとした態度の他人です。素っ気ない口調ですが、時折さりげない優しさを見せてください。',
+};
+ 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
  
    try {
-    const { message, email, mode } = req.body;
+    const { message, email, mode, character, talkStyle } = req.body;
     const apiKey = process.env.GEMINI_API_KEY;
  
     // ====== 占い・観光・雑談・心の相談モード（新規）======
@@ -58,6 +89,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           'あなたは親しみやすい日本の観光案内ガイドです。ユーザーの興味や現在地に合わせて、' +
           'おすすめのスポットや過ごし方を気さくに提案してください。',
         free: 'あなたは気さくな会話相手です。自由に楽しく雑談してください。',
+        personality_detail:
+          'あなたは性格診断の専門家です。ユーザーのビッグファイブ性格診断のスコア（外向性・協調性・誠実性・情緒安定性・開放性、それぞれ%）が渡されます。' +
+          'それぞれの数値から読み取れる性格の特徴を、良い面を中心に前向きに解説してください。' +
+          '最後に「あなたの取扱説明書」として、周りの人がこの人とどう接するとうまくいくかのアドバイスを1文加えてください。' +
+          '全体で8〜10文程度、断定しすぎずエンタメとして楽しめる口調で書いてください。',
         counseling:
           'あなたは優しく話を聞く相談相手です。相手の気持ちを否定せず、' +
           '共感的に耳を傾けてください。ただし、あなたは医師でも臨床心理士でもないため、' +
@@ -65,6 +101,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           '専門機関（心療内科、公認心理師など）への相談を自然な形で勧めてください。',
       };
       const modeSystemPrompt = modePrompts[mode] || modePrompts.free;
+      const personaPrompt = CHARACTER_PERSONAS[character as string] || '';
+      const talkStylePrompt = mode === 'free' && talkStyle ? (TALK_STYLE_PROMPTS[talkStyle as string] || '') : '';
+      const combinedSystemPrompt = [personaPrompt, talkStylePrompt, modeSystemPrompt].filter(Boolean).join(' ');
  
       // ====== サブスク会員かどうかを確認（会員なら無料枠チェックをスキップ）======
       let isPremiumMember = false;
@@ -124,7 +163,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             {
               parts: [
                 {
-                  text: `${modeSystemPrompt}
+                  text: `${combinedSystemPrompt}
 必ず自然な会話文だけを返してください。
 必ず3文以内で簡潔に答えてください。
 返答の文章の最後に必ず[EMOTION:happy]か[EMOTION:sad]か[EMOTION:angry]か[EMOTION:surprised]か[EMOTION:neutral]のどれか1つを付けてください。これは絶対に省略しないでください。

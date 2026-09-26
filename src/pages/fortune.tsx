@@ -116,7 +116,7 @@ function ResponsiveCamera({ baseFov, baseZ, baseY, targetY }: { baseFov: number;
 // ======================
 // メニューの種類
 // ======================
-type Mode = 'menu' | 'fortune' | 'travel' | 'free' | 'counseling' | 'fortune_detail' | 'travel_detail';
+type Mode = 'menu' | 'fortune' | 'travel' | 'free' | 'counseling' | 'fortune_detail' | 'travel_detail' | 'personality' | 'personality_detail';
 
 type DetailKind = 'fortune' | 'travel';
 
@@ -137,6 +137,7 @@ const UI: Record<Lang, {
   characterLabels: Record<'woman' | 'man' | 'witch', string>;
   menuHeading: string;
   btnFortune: string;
+  btnPersonality: string;
   btnTravel: string;
   btnCounseling: string;
   btnFree: string;
@@ -166,7 +167,8 @@ const UI: Record<Lang, {
     topTitle: '心に灯るあなたの部屋',
     characterLabels: { woman: '女性', man: '男性', witch: '魔女' },
     menuHeading: '今日はどうしますか？',
-    btnFortune: '🔮 占い・性格診断',
+    btnFortune: '🔮 占い',
+    btnPersonality: '🧩 性格診断',
     btnTravel: '🗾 観光・お店を教えてもらう',
     btnCounseling: '🌱 心の相談',
     btnFree: '💬 自由に話す',
@@ -206,7 +208,8 @@ const UI: Record<Lang, {
     topTitle: 'A Room Where Your Heart Glows',
     characterLabels: { woman: 'Woman', man: 'Man', witch: 'Witch' },
     menuHeading: 'What would you like to do today?',
-    btnFortune: '🔮 Fortune & Personality',
+    btnFortune: '🔮 Fortune Telling',
+    btnPersonality: '🧩 Personality Test',
     btnTravel: '🗾 Travel & Local Spots',
     btnCounseling: '🌱 Talk About Your Feelings',
     btnFree: '💬 Just Chat',
@@ -245,7 +248,8 @@ const UI: Record<Lang, {
     topTitle: '点亮心灯的房间',
     characterLabels: { woman: '女性', man: '男性', witch: '女巫' },
     menuHeading: '今天想做点什么呢？',
-    btnFortune: '🔮 占卜・性格测试',
+    btnFortune: '🔮 占卜',
+    btnPersonality: '🧩 性格测试',
     btnTravel: '🗾 旅游・美食推荐',
     btnCounseling: '🌱 心事倾诉',
     btnFree: '💬 随便聊聊',
@@ -283,7 +287,8 @@ const UI: Record<Lang, {
     topTitle: 'Ruang Tempat Hatimu Bersinar',
     characterLabels: { woman: 'Wanita', man: 'Pria', witch: 'Penyihir' },
     menuHeading: 'Hari ini mau melakukan apa?',
-    btnFortune: '🔮 Ramalan & Kepribadian',
+    btnFortune: '🔮 Ramalan',
+    btnPersonality: '🧩 Tes Kepribadian',
     btnTravel: '🗾 Info Wisata & Tempat Makan',
     btnCounseling: '🌱 Curhat',
     btnFree: '💬 Ngobrol Santai',
@@ -329,6 +334,71 @@ const CHARACTERS: { id: CharacterId; label: string; emoji: string; vrmUrl: strin
 ];
 
 // ======================
+// 性格診断（ビッグファイブ・15問）
+// ======================
+type Trait = 'extraversion' | 'agreeableness' | 'conscientiousness' | 'stability' | 'openness';
+
+const PERSONALITY_QUESTIONS: { trait: Trait; reverse: boolean; text: string }[] = [
+  { trait: 'extraversion', reverse: false, text: '初対面の人ともわりと自然に話せる' },
+  { trait: 'extraversion', reverse: false, text: 'にぎやかな場に行くと元気が出る' },
+  { trait: 'extraversion', reverse: true, text: '一人で静かに過ごす時間がいちばん落ち着く' },
+  { trait: 'agreeableness', reverse: false, text: '相手の気持ちを先に考えることが多い' },
+  { trait: 'agreeableness', reverse: false, text: 'できるだけ人と争わずに話を進めたい' },
+  { trait: 'agreeableness', reverse: true, text: '意見が合わないと強く言い返したくなる' },
+  { trait: 'conscientiousness', reverse: false, text: 'やることを先に決めてから動くほうだ' },
+  { trait: 'conscientiousness', reverse: false, text: '約束や締切はきちんと守りたい' },
+  { trait: 'conscientiousness', reverse: true, text: '気分しだいで予定が後回しになりやすい' },
+  { trait: 'stability', reverse: true, text: '小さなことでも長く気になりやすい' },
+  { trait: 'stability', reverse: false, text: '気持ちの切り替えは比較的早い' },
+  { trait: 'stability', reverse: true, text: '不安や心配で頭がいっぱいになりやすい' },
+  { trait: 'openness', reverse: false, text: '新しい考え方や知らない世界にひかれる' },
+  { trait: 'openness', reverse: false, text: 'いつもと違うやり方を試すのが好きだ' },
+  { trait: 'openness', reverse: true, text: '慣れた方法のほうが安心できる' },
+];
+
+const TRAIT_LABELS: Record<Trait, string> = {
+  extraversion: '🌟 外向性',
+  agreeableness: '🤝 協調性',
+  conscientiousness: '📅 誠実性',
+  stability: '🌊 情緒安定性',
+  openness: '🌈 開放性',
+};
+
+const LIKERT_OPTIONS: { value: number; label: string }[] = [
+  { value: 5, label: 'とても近い' },
+  { value: 4, label: 'やや近い' },
+  { value: 3, label: 'どちらでもない' },
+  { value: 2, label: 'あまり近くない' },
+  { value: 1, label: 'まったく近くない' },
+];
+
+function calcTraitScores(answers: number[]): Record<Trait, number> {
+  const traits: Trait[] = ['extraversion', 'agreeableness', 'conscientiousness', 'stability', 'openness'];
+  const scores = {} as Record<Trait, number>;
+  traits.forEach((trait) => {
+    const items = PERSONALITY_QUESTIONS
+      .map((q, i) => ({ ...q, answer: answers[i] }))
+      .filter((q) => q.trait === trait);
+    const sum = items.reduce((acc, q) => acc + (q.reverse ? 6 - q.answer : q.answer), 0);
+    // 1問1〜5点×3問＝3〜15点を、0〜100%に正規化
+    scores[trait] = Math.round(((sum - 3) / 12) * 100);
+  });
+  return scores;
+}
+
+// 「自由に話す」モード限定：話し相手タイプ（プレミアム会員向け）
+const TALK_STYLES: { id: string; label: string; emoji: string }[] = [
+  { id: 'companion', label: 'やさしい伴走型', emoji: '🌱' },
+  { id: 'friend', label: '親しい友達型', emoji: '😊' },
+  { id: 'senior', label: '頼れる先輩型', emoji: '💪' },
+  { id: 'boss', label: '仕事のできる上司型', emoji: '💼' },
+  { id: 'junior', label: '元気な後輩型', emoji: '✨' },
+  { id: 'grandpa', label: 'そっと見守るおじいちゃん型', emoji: '👴' },
+  { id: 'auntie', label: '世話好きなおばちゃん型', emoji: '👵' },
+  { id: 'cool', label: 'ツンとした他人型', emoji: '😐' },
+];
+
+// ======================
 // 危機的なサインの簡易検知（AIに判断を任せず、機械的に検知する）
 // ここに該当した場合は、Geminiに送らず即座に相談窓口を案内する
 // ======================
@@ -371,6 +441,11 @@ export default function FortunePage() {
   const [premiumEmail, setPremiumEmail] = useState('');
   const [premiumLoading, setPremiumLoading] = useState(false);
   const [showPremiumThanks, setShowPremiumThanks] = useState(false);
+  const [personalityAnswers, setPersonalityAnswers] = useState<number[]>([]);
+  const [personalityScores, setPersonalityScores] = useState<Record<Trait, number> | null>(null);
+  const [personalityUnlocked, setPersonalityUnlocked] = useState(false);
+  const [personalityResultText, setPersonalityResultText] = useState('');
+  const [talkStyle, setTalkStyle] = useState<string | null>(null);
   const [inputText, setInputText] = useState('');
   const [emotion, setEmotion] = useState('neutral');
   const [isSending, setIsSending] = useState(false);
@@ -638,7 +713,62 @@ export default function FortunePage() {
     if (params.get('subscribed') === '1') {
       setShowPremiumThanks(true);
     }
+    if (params.get('personality_unlocked') === '1') {
+      const saved = localStorage.getItem('pendingPersonality');
+      if (saved) {
+        const pending = JSON.parse(saved);
+        setPersonalityScores(pending.scores);
+        setPersonalityUnlocked(true);
+        setMode('personality');
+        if (pending.lang) { setLang(pending.lang); langRef.current = pending.lang; }
+        characterRef.current = pending.character || 'woman';
+        setCharacter(pending.character || 'woman');
+        localStorage.removeItem('pendingPersonality');
+      }
+    }
   }, []);
+
+  // 性格診断の結果を¥100で解放する
+  const handleUnlockPersonality = async (scores: Record<Trait, number>) => {
+    localStorage.setItem('pendingPersonality', JSON.stringify({
+      scores, character: characterRef.current, lang,
+    }));
+    const res = await fetch('/api/create-payment-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: currency === 'jpy' ? 100 : 1,
+        currency,
+        description: '性格診断（詳細結果）',
+        successUrl: `${window.location.origin}/fortune?personality_unlocked=1`,
+      }),
+    });
+    const data = await res.json();
+    if (data.url) window.location.href = data.url;
+  };
+
+  // 解放後、スコアをもとにAIへ詳細な解釈文を生成させる
+  useEffect(() => {
+    if (!personalityUnlocked || !personalityScores || personalityResultText) return;
+    const summary = (Object.keys(personalityScores) as Trait[])
+      .map((k) => `${TRAIT_LABELS[k]}:${personalityScores[k]}%`)
+      .join('、');
+    (async () => {
+      const res2 = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: summary,
+          mode: 'personality_detail',
+          character: characterRef.current,
+          lang: langRef.current,
+          email: typeof window !== 'undefined' ? localStorage.getItem('memberEmail') : null,
+        }),
+      });
+      const data2 = await res2.json();
+      setPersonalityResultText(data2.reply || '');
+    })();
+  }, [personalityUnlocked, personalityScores, personalityResultText]);
 
   // プレミアムプラン登録：メールアドレスを送ってCheckout Sessionへ遷移
   const handleSubscribe = async () => {
@@ -818,6 +948,7 @@ export default function FortunePage() {
             {t.menuHeading}
           </div>
           <button onClick={() => startMode('fortune')} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>{t.btnFortune}</button>
+          <button onClick={() => { setPersonalityAnswers([]); setPersonalityScores(null); setPersonalityUnlocked(false); setPersonalityResultText(''); setMode('personality'); }} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>{t.btnPersonality}</button>
           <button onClick={() => startMode('travel')} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>{t.btnTravel}</button>
           <button onClick={() => startMode('counseling')} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>{t.btnCounseling}</button>
           <button onClick={() => startMode('free')} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>{t.btnFree}</button>
@@ -884,6 +1015,85 @@ export default function FortunePage() {
           padding: "8px 12px", borderRadius: 8, textAlign: "center",
         }}>
           {t.disclaimerCounseling}
+        </div>
+      )}
+
+      {mode === 'personality' && personalityAnswers.length < PERSONALITY_QUESTIONS.length && (
+        <div style={{
+          position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.75)",
+          padding: 24,
+        }}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 24, width: "90%", maxWidth: 420 }}>
+            <div style={{ fontSize: 12, color: "#888", marginBottom: 8 }}>
+              {personalityAnswers.length + 1} / {PERSONALITY_QUESTIONS.length}
+            </div>
+            <div style={{ fontSize: 12, color: "#a78bfa", marginBottom: 4 }}>
+              {TRAIT_LABELS[PERSONALITY_QUESTIONS[personalityAnswers.length].trait]}
+            </div>
+            <div style={{ fontSize: 16, fontWeight: "bold", marginBottom: 20 }}>
+              {PERSONALITY_QUESTIONS[personalityAnswers.length].text}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {LIKERT_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => {
+                    const next = [...personalityAnswers, opt.value];
+                    setPersonalityAnswers(next);
+                    if (next.length === PERSONALITY_QUESTIONS.length) {
+                      setPersonalityScores(calcTraitScores(next));
+                    }
+                  }}
+                  style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #ddd", background: "#f9f9f9", textAlign: "left" }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {mode === 'personality' && personalityScores && (
+        <div style={{
+          position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.75)",
+          padding: 24, overflowY: "auto",
+        }}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 24, width: "90%", maxWidth: 420, maxHeight: "80vh", overflowY: "auto" }}>
+            <div style={{ fontSize: 16, fontWeight: "bold", marginBottom: 16 }}>{t.btnPersonality}</div>
+            {(Object.keys(personalityScores) as Trait[]).map((trait) => (
+              <div key={trait} style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 13, marginBottom: 4 }}>{TRAIT_LABELS[trait]}：{personalityScores[trait]}%</div>
+                <div style={{ background: "#eee", borderRadius: 6, height: 10, overflow: "hidden" }}>
+                  <div style={{ width: `${personalityScores[trait]}%`, background: "#7c4dff", height: "100%" }} />
+                </div>
+              </div>
+            ))}
+
+            {!personalityUnlocked && (
+              <button
+                onClick={() => handleUnlockPersonality(personalityScores)}
+                style={{ marginTop: 12, width: "100%", padding: "12px", borderRadius: 8, border: "none", background: "#7c4dff", color: "#fff", fontWeight: "bold" }}
+              >
+                🔓 詳しい結果を見る（{currency === 'jpy' ? '¥100' : '$1'}）
+              </button>
+            )}
+
+            {personalityUnlocked && (
+              <div style={{ marginTop: 16, fontSize: 14, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+                {personalityResultText || '読み込み中...'}
+              </div>
+            )}
+
+            <button
+              onClick={() => { setMode('menu'); setPersonalityAnswers([]); setPersonalityScores(null); setPersonalityUnlocked(false); setPersonalityResultText(''); }}
+              style={{ marginTop: 16, width: "100%", padding: "10px", borderRadius: 8, border: "1px solid #ccc", background: "#fff" }}
+            >
+              {t.back}
+            </button>
+          </div>
         </div>
       )}
 
