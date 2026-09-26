@@ -129,7 +129,7 @@ const DETAIL_PRICING: Record<DetailKind, { jpy: { amount: number; display: strin
 // ======================
 // 言語・通貨（今はja/enの2言語。増やす場合はUIオブジェクトにキーを追加してください）
 // ======================
-type Lang = 'ja' | 'en' | 'zh' | 'id';
+type Lang = 'ja' | 'en' | 'zh' | 'id' | 'es';
 
 const UI: Record<Lang, {
   chooseCharacter: string;
@@ -387,6 +387,61 @@ const UI: Record<Lang, {
       '・International Association for Suicide Prevention (cari layanan bantuan terdekat): https://www.iasp.info/resources/Crisis_Centres/\n\n' +
       'Perasaanmu penting — silakan hubungi salah satu layanan di atas.',
     speechRecognitionLang: 'id-ID',
+  },
+  es: {
+    chooseCharacter: 'Por favor, elige con quién te gustaría hablar',
+    topTitle: 'Una Habitación Donde Brilla Tu Corazón',
+    characterLabels: { woman: 'Mujer', man: 'Hombre', witch: 'Bruja' },
+    menuHeading: '¿Qué te gustaría hacer hoy?',
+    btnFortune: '🔮 Adivinación',
+    btnPersonality: '🧩 Test de Personalidad',
+    talkStyleTitle: '¿Con quién te gustaría hablar?',
+    talkStyleLabels: {
+      companion: 'Acompañante Amable', friend: 'Amigo Cercano', senior: 'Mentor de Confianza', boss: 'Jefe Eficaz',
+      junior: 'Junior Enérgico', grandpa: 'Abuelo Protector', auntie: 'Tía Atenta', cool: 'Desconocido Distante',
+    },
+    occultSelectTitle: 'Elige un método de adivinación',
+    occultSimple: '🔮 Adivinación Simple (Gratis)',
+    occultAstrology: '🌌 Astrología Occidental',
+    occultNumerology: '🔢 Numerología',
+    occultFourPillars: '🀄 Cuatro Pilares',
+    occultTarot: '🃏 Tarot',
+    occultBirthdateLabel: 'Por favor, introduce tu fecha de nacimiento',
+    occultTarotLabel: 'Cuéntanos qué te preocupa (opcional)',
+    occultSubmit: 'Obtener Mi Lectura',
+    btnTravel: '🗾 Turismo y Lugares Locales',
+    btnCounseling: '🌱 Hablar de Tus Sentimientos',
+    btnFree: '💬 Charlar Libremente',
+    btnPremium: '✨ Unirse al Plan Premium',
+    premiumModalTitle: 'Plan Premium ($9.99/mes)',
+    premiumModalDesc: 'Chatea hasta 200 veces al día, tanto como tu corazón desee. Introduce el correo electrónico que quieres usar.',
+    premiumEmailPlaceholder: 'Correo electrónico',
+    premiumSubmit: 'Continuar al pago',
+    premiumCancel: 'Cancelar',
+    premiumThanks: '¡Gracias por suscribirte! Bienvenido/a a Premium 🎉',
+    back: '← Atrás',
+    send: 'Enviar',
+    talk: 'Hablar',
+    listening: 'Escuchando...',
+    placeholder: 'Escribe un mensaje...',
+    disclaimerCounseling: 'Esta conversación es generada por IA y no constituye un diagnóstico ni tratamiento de un profesional médico. Para asuntos serios, consulta a un profesional o servicio médico.',
+    detailLabel: { fortune: 'Lectura Detallada', travel: 'Plan de Viaje Detallado' },
+    thanksHeading: '¡Gracias por tu compra!',
+    tapReveal: '🔮 Toca para escuchar el resultado detallado',
+    greetingAfterCharacter: '¡Hola! ¿Qué te gustaría hacer hoy?',
+    greetings: {
+      fortune: '¡Hola! Vamos a ver tu personalidad y tu fortuna. ¿Podrías decirme primero tu fecha de nacimiento?',
+      travel: '¡Hola! Pregúntame lo que quieras sobre lugares para visitar o comer por aquí. ¿Qué zona te gustaría explorar?',
+      free: '¡Hola! Siéntete libre de hablar conmigo sobre lo que quieras.',
+      counseling: 'Hola. Cuéntame con calma lo que te preocupe, cuando te sientas listo/a.',
+    },
+    crisis:
+      'Gracias por compartir cómo te sientes. Te recomendamos contactar con una línea de ayuda profesional.\n\n' +
+      '・Teléfono de la Esperanza (España): 717 003 717\n' +
+      '・Línea 024 (atención a la conducta suicida, España): 024\n' +
+      '・International Association for Suicide Prevention (encuentra ayuda cerca de ti): https://www.iasp.info/resources/Crisis_Centres/\n\n' +
+      'Tus sentimientos importan — por favor, contacta con uno de estos recursos.',
+    speechRecognitionLang: 'es-ES',
   },
 };
 
@@ -979,7 +1034,7 @@ export default function FortunePage() {
         position: "fixed", top: 12, right: 12, zIndex: 1000,
         display: "flex", gap: 4, background: "rgba(0,0,0,0.5)", borderRadius: 20, padding: 4,
       }}>
-        {(['ja', 'en', 'zh', 'id'] as Lang[]).map((l) => (
+        {(['ja', 'en', 'zh', 'id', 'es'] as Lang[]).map((l) => (
           <button
             key={l}
             onClick={() => { setLang(l); langRef.current = l; }}
@@ -990,7 +1045,7 @@ export default function FortunePage() {
               fontWeight: lang === l ? "bold" : "normal",
             }}
           >
-            {{ ja: '日本語', en: 'English', zh: '中文', id: 'Indonesia' }[l]}
+            {{ ja: '日本語', en: 'English', zh: '中文', id: 'Indonesia', es: 'Español' }[l]}
           </button>
         ))}
       </div>

@@ -65,6 +65,7 @@ const LANG_INSTRUCTIONS: Record<string, string> = {
   en: 'Always respond in English.',
   zh: '请务必用中文回答。',
   id: 'Selalu jawab dalam Bahasa Indonesia.',
+  es: 'Responde siempre en español.',
 };
  
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
