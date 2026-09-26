@@ -138,6 +138,8 @@ const UI: Record<Lang, {
   menuHeading: string;
   btnFortune: string;
   btnPersonality: string;
+  talkStyleTitle: string;
+  talkStyleLabels: Record<'companion' | 'friend' | 'senior' | 'boss' | 'junior' | 'grandpa' | 'auntie' | 'cool', string>;
   btnTravel: string;
   btnCounseling: string;
   btnFree: string;
@@ -169,6 +171,11 @@ const UI: Record<Lang, {
     menuHeading: '今日はどうしますか？',
     btnFortune: '🔮 占い',
     btnPersonality: '🧩 性格診断',
+    talkStyleTitle: 'どんな相手として話しますか？',
+    talkStyleLabels: {
+      companion: 'やさしい伴走型', friend: '親しい友達型', senior: '頼れる先輩型', boss: '仕事のできる上司型',
+      junior: '元気な後輩型', grandpa: 'そっと見守るおじいちゃん型', auntie: '世話好きなおばちゃん型', cool: 'ツンとした他人型',
+    },
     btnTravel: '🗾 観光・お店を教えてもらう',
     btnCounseling: '🌱 心の相談',
     btnFree: '💬 自由に話す',
@@ -210,6 +217,11 @@ const UI: Record<Lang, {
     menuHeading: 'What would you like to do today?',
     btnFortune: '🔮 Fortune Telling',
     btnPersonality: '🧩 Personality Test',
+    talkStyleTitle: 'Who would you like to talk to?',
+    talkStyleLabels: {
+      companion: 'Gentle Companion', friend: 'Close Friend', senior: 'Reliable Senior', boss: 'Sharp Boss',
+      junior: 'Cheerful Junior', grandpa: 'Watchful Grandpa', auntie: 'Caring Auntie', cool: 'Aloof Stranger',
+    },
     btnTravel: '🗾 Travel & Local Spots',
     btnCounseling: '🌱 Talk About Your Feelings',
     btnFree: '💬 Just Chat',
@@ -250,6 +262,11 @@ const UI: Record<Lang, {
     menuHeading: '今天想做点什么呢？',
     btnFortune: '🔮 占卜',
     btnPersonality: '🧩 性格测试',
+    talkStyleTitle: '您想和什么样的对象聊天？',
+    talkStyleLabels: {
+      companion: '温柔伴随型', friend: '亲密朋友型', senior: '可靠前辈型', boss: '干练上司型',
+      junior: '元气后辈型', grandpa: '静静守护的爷爷型', auntie: '热心大妈型', cool: '高冷型',
+    },
     btnTravel: '🗾 旅游・美食推荐',
     btnCounseling: '🌱 心事倾诉',
     btnFree: '💬 随便聊聊',
@@ -289,6 +306,11 @@ const UI: Record<Lang, {
     menuHeading: 'Hari ini mau melakukan apa?',
     btnFortune: '🔮 Ramalan',
     btnPersonality: '🧩 Tes Kepribadian',
+    talkStyleTitle: 'Ingin mengobrol dengan siapa?',
+    talkStyleLabels: {
+      companion: 'Pendamping Lembut', friend: 'Teman Dekat', senior: 'Senior Andalan', boss: 'Atasan Cekatan',
+      junior: 'Junior Ceria', grandpa: 'Kakek Pengayom', auntie: 'Bibi Perhatian', cool: 'Orang Asing yang Dingin',
+    },
     btnTravel: '🗾 Info Wisata & Tempat Makan',
     btnCounseling: '🌱 Curhat',
     btnFree: '💬 Ngobrol Santai',
@@ -418,6 +440,7 @@ export default function FortunePage() {
   const [mode, setMode] = useState<Mode>('menu');
   const [character, setCharacter] = useState<CharacterId | null>(null);
   const characterRef = useRef<CharacterId | null>(null); // 状態更新の反映待ちを避けるための参照
+  const talkStyleRef = useRef<string | null>(null); // 状態更新の反映待ちを避けるための参照
 
   // ブラウザの言語設定から、表示言語・通貨を自動判定する
   const [lang, setLang] = useState<Lang>('ja');
@@ -446,6 +469,7 @@ export default function FortunePage() {
   const [personalityUnlocked, setPersonalityUnlocked] = useState(false);
   const [personalityResultText, setPersonalityResultText] = useState('');
   const [talkStyle, setTalkStyle] = useState<string | null>(null);
+  const [pendingFreeStart, setPendingFreeStart] = useState(false);
   const [inputText, setInputText] = useState('');
   const [emotion, setEmotion] = useState('neutral');
   const [isSending, setIsSending] = useState(false);
@@ -579,6 +603,7 @@ export default function FortunePage() {
           mode: currentMode,
           character: characterRef.current,
           lang: langRef.current,
+          talkStyle: currentMode === 'free' ? talkStyleRef.current : null,
           email: typeof window !== 'undefined' ? localStorage.getItem('memberEmail') : null,
         }),
       });
@@ -820,6 +845,8 @@ export default function FortunePage() {
       counseling: t.greetings.counseling,
       fortune_detail: '',
       travel_detail: '',
+      personality: '',
+      personality_detail: '',
     };
     const g = greetings[m];
     if (g) {
@@ -951,7 +978,7 @@ export default function FortunePage() {
           <button onClick={() => { setPersonalityAnswers([]); setPersonalityScores(null); setPersonalityUnlocked(false); setPersonalityResultText(''); setMode('personality'); }} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>{t.btnPersonality}</button>
           <button onClick={() => startMode('travel')} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>{t.btnTravel}</button>
           <button onClick={() => startMode('counseling')} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>{t.btnCounseling}</button>
-          <button onClick={() => startMode('free')} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>{t.btnFree}</button>
+          <button onClick={() => setPendingFreeStart(true)} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>{t.btnFree}</button>
           <button
             onClick={() => setShowPremiumModal(true)}
             style={{ ...menuButtonStyle, pointerEvents: "auto", background: "#7c4dff", color: "#fff" }}
@@ -1015,6 +1042,42 @@ export default function FortunePage() {
           padding: "8px 12px", borderRadius: 8, textAlign: "center",
         }}>
           {t.disclaimerCounseling}
+        </div>
+      )}
+
+      {pendingFreeStart && (
+        <div style={{
+          position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.75)",
+          padding: 24,
+        }}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 24, width: "90%", maxWidth: 420, maxHeight: "80vh", overflowY: "auto" }}>
+            <div style={{ fontSize: 16, fontWeight: "bold", marginBottom: 16, textAlign: "center" }}>
+              {t.talkStyleTitle}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {TALK_STYLES.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => {
+                    talkStyleRef.current = s.id;
+                    setTalkStyle(s.id);
+                    setPendingFreeStart(false);
+                    startMode('free');
+                  }}
+                  style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #ddd", background: "#f9f9f9", textAlign: "left" }}
+                >
+                  {s.emoji} {t.talkStyleLabels[s.id as keyof typeof t.talkStyleLabels]}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setPendingFreeStart(false)}
+              style={{ marginTop: 16, width: "100%", padding: "10px", borderRadius: 8, border: "1px solid #ccc", background: "#fff" }}
+            >
+              {t.back}
+            </button>
+          </div>
         </div>
       )}
 
