@@ -610,10 +610,11 @@ export default function FortunePage() {
       const data = await response.json();
       let reply = data.reply ?? "少し考えさせてください。";
 
-      const emotionMatch = reply.match(/\[EMOTION:(.+?)\]/);
-      if (emotionMatch) {
-        setEmotion(emotionMatch[1]);
-        reply = reply.replace(/\[EMOTION:.+?\]/, '').trim();
+      const emotionMatches = reply.match(/\[EMOTION:(.+?)\]/g);
+      if (emotionMatches && emotionMatches.length > 0) {
+        const lastTag = emotionMatches[emotionMatches.length - 1].match(/\[EMOTION:(.+?)\]/);
+        if (lastTag) setEmotion(lastTag[1]);
+        reply = reply.replace(/\[EMOTION:.+?\]/g, '').trim();
       } else {
         setEmotion('neutral');
       }
