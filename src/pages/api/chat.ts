@@ -59,11 +59,19 @@ const TALK_STYLE_PROMPTS: Record<string, string> = {
     'あなたはユーザーに対してややツンとした態度の他人です。素っ気ない口調ですが、時折さりげない優しさを見せてください。',
 };
  
+// 選択されている言語に応じて、AIに必ずその言語で返答するよう指示する
+const LANG_INSTRUCTIONS: Record<string, string> = {
+  ja: '必ず日本語で答えてください。',
+  en: 'Always respond in English.',
+  zh: '请务必用中文回答。',
+  id: 'Selalu jawab dalam Bahasa Indonesia.',
+};
+ 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
  
    try {
-    const { message, email, mode, character, talkStyle } = req.body;
+    const { message, email, mode, character, talkStyle, lang } = req.body;
     const apiKey = process.env.GEMINI_API_KEY;
  
     // ====== 占い・観光・雑談・心の相談モード（新規）======
@@ -94,6 +102,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           'それぞれの数値から読み取れる性格の特徴を、良い面を中心に前向きに解説してください。' +
           '最後に「あなたの取扱説明書」として、周りの人がこの人とどう接するとうまくいくかのアドバイスを1文加えてください。' +
           '全体で8〜10文程度、断定しすぎずエンタメとして楽しめる口調で書いてください。',
+        astrology:
+          'あなたは経験豊かな西洋占星術師です。ユーザーの生年月日から太陽星座を割り出し、' +
+          'その星座の性格的な特徴、今の時期の運勢、恋愛面・仕事面でのアドバイスを、' +
+          '楽しく前向きな口調で鑑定してください。全体で8〜10文程度でまとめてください。' +
+          'これはエンターテインメントとしての占いであり、科学的な予言ではないという前提で、断定しすぎない表現を使ってください。',
+        numerology:
+          'あなたは経験豊かな数秘術師です。ユーザーの生年月日から「ライフパスナンバー」を' +
+          '計算し（生年月日の数字をすべて足し、2桁になったらさらに1桁になるまで足し合わせる。' +
+          'ただし11・22・33はマスターナンバーとしてそのまま使う）、その数字が持つ意味、' +
+          '性格的な傾向、今後意識するとよいことを楽しく前向きな口調で鑑定してください。' +
+          '計算過程は省略せず簡潔に示し、全体で8〜10文程度でまとめてください。',
+        four_pillars:
+          'あなたは経験豊かな四柱推命の占い師です。ユーザーの生年月日（可能なら生まれた時間も）' +
+          'から、大まかな命式の傾向を読み取り、性格的な特徴、今の運気の流れ、これから意識すると' +
+          'よいことを、楽しく前向きな口調で鑑定してください。生まれた時間が分からない場合は、' +
+          '日柱までの情報で分かる範囲の傾向として鑑定してください。全体で8〜10文程度でまとめてください。',
+        tarot:
+          'あなたは経験豊かなタロット占い師です。ユーザーが気にしていることを聞いたうえで、' +
+          '大アルカナ22枚の中からランダムに2〜3枚のカードを選んだという設定で、カード名を明示し、' +
+          'そのカードの意味を絡めながら、今伝えたいメッセージを鑑定してください。' +
+          '楽しく前向きな口調で、全体で8〜10文程度でまとめてください。',
         counseling:
           'あなたは優しく話を聞く相談相手です。相手の気持ちを否定せず、' +
           '共感的に耳を傾けてください。ただし、あなたは医師でも臨床心理士でもないため、' +
@@ -103,7 +132,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const modeSystemPrompt = modePrompts[mode] || modePrompts.free;
       const personaPrompt = CHARACTER_PERSONAS[character as string] || '';
       const talkStylePrompt = mode === 'free' && talkStyle ? (TALK_STYLE_PROMPTS[talkStyle as string] || '') : '';
-      const combinedSystemPrompt = [personaPrompt, talkStylePrompt, modeSystemPrompt].filter(Boolean).join(' ');
+      const langInstruction = LANG_INSTRUCTIONS[lang as string] || LANG_INSTRUCTIONS.ja;
+      const combinedSystemPrompt = [langInstruction, personaPrompt, talkStylePrompt, modeSystemPrompt].filter(Boolean).join(' ');
  
       // ====== サブスク会員かどうかを確認（会員なら無料枠チェックをスキップ）======
       let isPremiumMember = false;

@@ -140,6 +140,15 @@ const UI: Record<Lang, {
   btnPersonality: string;
   talkStyleTitle: string;
   talkStyleLabels: Record<'companion' | 'friend' | 'senior' | 'boss' | 'junior' | 'grandpa' | 'auntie' | 'cool', string>;
+  occultSelectTitle: string;
+  occultSimple: string;
+  occultAstrology: string;
+  occultNumerology: string;
+  occultFourPillars: string;
+  occultTarot: string;
+  occultBirthdateLabel: string;
+  occultTarotLabel: string;
+  occultSubmit: string;
   btnTravel: string;
   btnCounseling: string;
   btnFree: string;
@@ -176,6 +185,15 @@ const UI: Record<Lang, {
       companion: 'やさしい伴走型', friend: '親しい友達型', senior: '頼れる先輩型', boss: '仕事のできる上司型',
       junior: '元気な後輩型', grandpa: 'そっと見守るおじいちゃん型', auntie: '世話好きなおばちゃん型', cool: 'ツンとした他人型',
     },
+    occultSelectTitle: '占術を選んでください',
+    occultSimple: '🔮 シンプル占い（無料）',
+    occultAstrology: '🌌 西洋占星術',
+    occultNumerology: '🔢 数秘術',
+    occultFourPillars: '🀄 四柱推命',
+    occultTarot: '🃏 タロット',
+    occultBirthdateLabel: '生年月日を入力してください',
+    occultTarotLabel: '気になっていることがあれば教えてください（未入力でもOK）',
+    occultSubmit: '占ってもらう',
     btnTravel: '🗾 観光・お店を教えてもらう',
     btnCounseling: '🌱 心の相談',
     btnFree: '💬 自由に話す',
@@ -222,6 +240,15 @@ const UI: Record<Lang, {
       companion: 'Gentle Companion', friend: 'Close Friend', senior: 'Reliable Senior', boss: 'Sharp Boss',
       junior: 'Cheerful Junior', grandpa: 'Watchful Grandpa', auntie: 'Caring Auntie', cool: 'Aloof Stranger',
     },
+    occultSelectTitle: 'Choose a divination method',
+    occultSimple: '🔮 Simple Fortune (Free)',
+    occultAstrology: '🌌 Western Astrology',
+    occultNumerology: '🔢 Numerology',
+    occultFourPillars: '🀄 Four Pillars',
+    occultTarot: '🃏 Tarot',
+    occultBirthdateLabel: 'Please enter your date of birth',
+    occultTarotLabel: "Tell us what's on your mind (optional)",
+    occultSubmit: 'Get My Reading',
     btnTravel: '🗾 Travel & Local Spots',
     btnCounseling: '🌱 Talk About Your Feelings',
     btnFree: '💬 Just Chat',
@@ -267,6 +294,15 @@ const UI: Record<Lang, {
       companion: '温柔伴随型', friend: '亲密朋友型', senior: '可靠前辈型', boss: '干练上司型',
       junior: '元气后辈型', grandpa: '静静守护的爷爷型', auntie: '热心大妈型', cool: '高冷型',
     },
+    occultSelectTitle: '请选择占卜方式',
+    occultSimple: '🔮 简单占卜（免费）',
+    occultAstrology: '🌌 西方占星术',
+    occultNumerology: '🔢 数字命理学',
+    occultFourPillars: '🀄 四柱推命',
+    occultTarot: '🃏 塔罗牌',
+    occultBirthdateLabel: '请输入您的出生日期',
+    occultTarotLabel: '请告诉我们您在意的事情（可不填）',
+    occultSubmit: '开始占卜',
     btnTravel: '🗾 旅游・美食推荐',
     btnCounseling: '🌱 心事倾诉',
     btnFree: '💬 随便聊聊',
@@ -311,6 +347,15 @@ const UI: Record<Lang, {
       companion: 'Pendamping Lembut', friend: 'Teman Dekat', senior: 'Senior Andalan', boss: 'Atasan Cekatan',
       junior: 'Junior Ceria', grandpa: 'Kakek Pengayom', auntie: 'Bibi Perhatian', cool: 'Orang Asing yang Dingin',
     },
+    occultSelectTitle: 'Pilih metode ramalan',
+    occultSimple: '🔮 Ramalan Sederhana (Gratis)',
+    occultAstrology: '🌌 Astrologi Barat',
+    occultNumerology: '🔢 Numerologi',
+    occultFourPillars: '🀄 Four Pillars',
+    occultTarot: '🃏 Tarot',
+    occultBirthdateLabel: 'Silakan masukkan tanggal lahir Anda',
+    occultTarotLabel: 'Ceritakan apa yang sedang Anda pikirkan (opsional)',
+    occultSubmit: 'Mulai Ramalan',
     btnTravel: '🗾 Info Wisata & Tempat Makan',
     btnCounseling: '🌱 Curhat',
     btnFree: '💬 Ngobrol Santai',
@@ -470,6 +515,10 @@ export default function FortunePage() {
   const [personalityResultText, setPersonalityResultText] = useState('');
   const [talkStyle, setTalkStyle] = useState<string | null>(null);
   const [pendingFreeStart, setPendingFreeStart] = useState(false);
+  const [occultStep, setOccultStep] = useState<'closed' | 'select' | 'input' | 'result'>('closed');
+  const [occultType, setOccultType] = useState<'astrology' | 'numerology' | 'four_pillars' | 'tarot' | null>(null);
+  const [occultInput, setOccultInput] = useState('');
+  const [occultResultText, setOccultResultText] = useState('');
   const [inputText, setInputText] = useState('');
   const [emotion, setEmotion] = useState('neutral');
   const [isSending, setIsSending] = useState(false);
@@ -752,7 +801,64 @@ export default function FortunePage() {
         localStorage.removeItem('pendingPersonality');
       }
     }
+    if (params.get('occult_unlocked') === '1') {
+      const saved = localStorage.getItem('pendingOccult');
+      if (saved) {
+        const pending = JSON.parse(saved);
+        setOccultType(pending.occultType);
+        setOccultInput(pending.occultInput);
+        setOccultStep('result');
+        if (pending.lang) { setLang(pending.lang); langRef.current = pending.lang; }
+        characterRef.current = pending.character || 'woman';
+        setCharacter(pending.character || 'woman');
+        localStorage.removeItem('pendingOccult');
+      }
+    }
   }, []);
+
+  const OCCULT_LABELS: Record<string, string> = {
+    astrology: '西洋占星術', numerology: '数秘術', four_pillars: '四柱推命', tarot: 'タロット',
+  };
+
+  // 占術の結果を¥100で解放する
+  const handleUnlockOccult = async () => {
+    if (!occultType) return;
+    localStorage.setItem('pendingOccult', JSON.stringify({
+      occultType, occultInput, character: characterRef.current, lang,
+    }));
+    const res = await fetch('/api/create-payment-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: currency === 'jpy' ? 100 : 1,
+        currency,
+        description: OCCULT_LABELS[occultType] || '占術鑑定',
+        successUrl: `${window.location.origin}/fortune?occult_unlocked=1`,
+      }),
+    });
+    const data = await res.json();
+    if (data.url) window.location.href = data.url;
+  };
+
+  // 占術結果画面に入ったら、AIへ鑑定をリクエストする
+  useEffect(() => {
+    if (occultStep !== 'result' || !occultType || occultResultText) return;
+    (async () => {
+      const res2 = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: occultInput || '（特になし）',
+          mode: occultType,
+          character: characterRef.current,
+          lang: langRef.current,
+          email: typeof window !== 'undefined' ? localStorage.getItem('memberEmail') : null,
+        }),
+      });
+      const data2 = await res2.json();
+      setOccultResultText(data2.reply || '');
+    })();
+  }, [occultStep, occultType, occultInput, occultResultText]);
 
   // 性格診断の結果を¥100で解放する
   const handleUnlockPersonality = async (scores: Record<Trait, number>) => {
@@ -975,7 +1081,7 @@ export default function FortunePage() {
           <div style={{ color: "#fff", fontSize: 22, fontWeight: "bold", marginBottom: 8, pointerEvents: "none" }}>
             {t.menuHeading}
           </div>
-          <button onClick={() => startMode('fortune')} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>{t.btnFortune}</button>
+          <button onClick={() => setOccultStep('select')} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>{t.btnFortune}</button>
           <button onClick={() => { setPersonalityAnswers([]); setPersonalityScores(null); setPersonalityUnlocked(false); setPersonalityResultText(''); setMode('personality'); }} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>{t.btnPersonality}</button>
           <button onClick={() => startMode('travel')} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>{t.btnTravel}</button>
           <button onClick={() => startMode('counseling')} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>{t.btnCounseling}</button>
@@ -1074,6 +1180,114 @@ export default function FortunePage() {
             </div>
             <button
               onClick={() => setPendingFreeStart(false)}
+              style={{ marginTop: 16, width: "100%", padding: "10px", borderRadius: 8, border: "1px solid #ccc", background: "#fff" }}
+            >
+              {t.back}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {occultStep === 'select' && (
+        <div style={{
+          position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.75)",
+          padding: 24,
+        }}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 24, width: "90%", maxWidth: 420 }}>
+            <div style={{ fontSize: 16, fontWeight: "bold", marginBottom: 16, textAlign: "center" }}>
+              {t.occultSelectTitle}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <button
+                onClick={() => { setOccultStep('closed'); startMode('fortune'); }}
+                style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #ddd", background: "#f9f9f9", textAlign: "left" }}
+              >
+                {t.occultSimple}
+              </button>
+              {(['astrology', 'numerology', 'four_pillars', 'tarot'] as const).map((k) => {
+                const labelMap: Record<typeof k, string> = {
+                  astrology: t.occultAstrology,
+                  numerology: t.occultNumerology,
+                  four_pillars: t.occultFourPillars,
+                  tarot: t.occultTarot,
+                };
+                return (
+                  <button
+                    key={k}
+                    onClick={() => { setOccultType(k); setOccultInput(''); setOccultResultText(''); setOccultStep('input'); }}
+                    style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #ddd", background: "#f9f9f9", textAlign: "left" }}
+                  >
+                    {labelMap[k]}（{currency === 'jpy' ? '¥100' : '$1'}）
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => setOccultStep('closed')}
+              style={{ marginTop: 16, width: "100%", padding: "10px", borderRadius: 8, border: "1px solid #ccc", background: "#fff" }}
+            >
+              {t.back}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {occultStep === 'input' && occultType && (
+        <div style={{
+          position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.75)",
+          padding: 24,
+        }}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 24, width: "90%", maxWidth: 420 }}>
+            <div style={{ fontSize: 15, fontWeight: "bold", marginBottom: 16 }}>
+              {occultType === 'tarot' ? t.occultTarotLabel : t.occultBirthdateLabel}
+            </div>
+            {occultType === 'tarot' ? (
+              <textarea
+                value={occultInput}
+                onChange={(e) => setOccultInput(e.target.value)}
+                rows={3}
+                style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #ccc", marginBottom: 16, fontSize: 14 }}
+              />
+            ) : (
+              <input
+                type="date"
+                value={occultInput}
+                onChange={(e) => setOccultInput(e.target.value)}
+                style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #ccc", marginBottom: 16, fontSize: 14 }}
+              />
+            )}
+            <button
+              onClick={handleUnlockOccult}
+              disabled={occultType !== 'tarot' && !occultInput}
+              style={{ width: "100%", padding: 12, borderRadius: 8, border: "none", background: "#7c4dff", color: "#fff", fontWeight: "bold", opacity: (occultType !== 'tarot' && !occultInput) ? 0.5 : 1 }}
+            >
+              {t.occultSubmit}（{currency === 'jpy' ? '¥100' : '$1'}）
+            </button>
+            <button
+              onClick={() => setOccultStep('select')}
+              style={{ marginTop: 8, width: "100%", padding: "10px", borderRadius: 8, border: "1px solid #ccc", background: "#fff" }}
+            >
+              {t.back}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {occultStep === 'result' && occultType && (
+        <div style={{
+          position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.75)",
+          padding: 24,
+        }}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 24, width: "90%", maxWidth: 420, maxHeight: "80vh", overflowY: "auto" }}>
+            <div style={{ fontSize: 16, fontWeight: "bold", marginBottom: 12 }}>{OCCULT_LABELS[occultType]}</div>
+            <div style={{ fontSize: 14, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+              {occultResultText || '読み込み中...'}
+            </div>
+            <button
+              onClick={() => { setOccultStep('closed'); setOccultType(null); setOccultInput(''); setOccultResultText(''); setMode('menu'); }}
               style={{ marginTop: 16, width: "100%", padding: "10px", borderRadius: 8, border: "1px solid #ccc", background: "#fff" }}
             >
               {t.back}
