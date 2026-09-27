@@ -149,6 +149,9 @@ const UI: Record<Lang, {
   occultBirthdateLabel: string;
   occultTarotLabel: string;
   occultSubmit: string;
+  traitLabels: Record<'extraversion' | 'agreeableness' | 'conscientiousness' | 'stability' | 'openness', string>;
+  personalityQuestions: string[];
+  likertOptions: string[];
   btnTravel: string;
   btnCounseling: string;
   btnFree: string;
@@ -194,6 +197,28 @@ const UI: Record<Lang, {
     occultBirthdateLabel: '生年月日を入力してください',
     occultTarotLabel: '気になっていることがあれば教えてください（未入力でもOK）',
     occultSubmit: '占ってもらう',
+    traitLabels: {
+      extraversion: '🌟 外向性', agreeableness: '🤝 協調性', conscientiousness: '📅 誠実性',
+      stability: '🌊 情緒安定性', openness: '🌈 開放性',
+    },
+    personalityQuestions: [
+      '初対面の人ともわりと自然に話せる',
+      'にぎやかな場に行くと元気が出る',
+      '一人で静かに過ごす時間がいちばん落ち着く',
+      '相手の気持ちを先に考えることが多い',
+      'できるだけ人と争わずに話を進めたい',
+      '意見が合わないと強く言い返したくなる',
+      'やることを先に決めてから動くほうだ',
+      '約束や締切はきちんと守りたい',
+      '気分しだいで予定が後回しになりやすい',
+      '小さなことでも長く気になりやすい',
+      '気持ちの切り替えは比較的早い',
+      '不安や心配で頭がいっぱいになりやすい',
+      '新しい考え方や知らない世界にひかれる',
+      'いつもと違うやり方を試すのが好きだ',
+      '慣れた方法のほうが安心できる',
+    ],
+    likertOptions: ['とても近い', 'やや近い', 'どちらでもない', 'あまり近くない', 'まったく近くない'],
     btnTravel: '🗾 観光・お店を教えてもらう',
     btnCounseling: '🌱 心の相談',
     btnFree: '💬 自由に話す',
@@ -249,6 +274,28 @@ const UI: Record<Lang, {
     occultBirthdateLabel: 'Please enter your date of birth',
     occultTarotLabel: "Tell us what's on your mind (optional)",
     occultSubmit: 'Get My Reading',
+    traitLabels: {
+      extraversion: '🌟 Extraversion', agreeableness: '🤝 Agreeableness', conscientiousness: '📅 Conscientiousness',
+      stability: '🌊 Emotional Stability', openness: '🌈 Openness',
+    },
+    personalityQuestions: [
+      'I can talk fairly naturally with people I just met',
+      'Lively places give me energy',
+      'I feel most at ease spending quiet time alone',
+      'I tend to consider the other person\'s feelings first',
+      'I prefer to avoid conflict and keep discussions smooth',
+      'I tend to argue back strongly when I disagree',
+      'I like to decide what to do before acting',
+      'I want to keep promises and deadlines properly',
+      'My plans tend to get pushed back depending on my mood',
+      'Even small things tend to bother me for a long time',
+      'I switch my mood relatively quickly',
+      'My mind tends to fill up with anxiety or worry',
+      'I\'m drawn to new ideas and unfamiliar worlds',
+      'I like trying different ways of doing things',
+      'I feel safer sticking to familiar methods',
+    ],
+    likertOptions: ['Strongly agree', 'Somewhat agree', 'Neutral', 'Somewhat disagree', 'Strongly disagree'],
     btnTravel: '🗾 Travel & Local Spots',
     btnCounseling: '🌱 Talk About Your Feelings',
     btnFree: '💬 Just Chat',
@@ -303,6 +350,28 @@ const UI: Record<Lang, {
     occultBirthdateLabel: '请输入您的出生日期',
     occultTarotLabel: '请告诉我们您在意的事情（可不填）',
     occultSubmit: '开始占卜',
+    traitLabels: {
+      extraversion: '🌟 外向性', agreeableness: '🤝 亲和性', conscientiousness: '📅 尽责性',
+      stability: '🌊 情绪稳定性', openness: '🌈 开放性',
+    },
+    personalityQuestions: [
+      '和初次见面的人也能比较自然地交谈',
+      '去热闹的场合会让我充满活力',
+      '一个人安静度过的时光最让我放松',
+      '我常常会先考虑对方的感受',
+      '我希望尽量不与人争执，顺利推进对话',
+      '意见不合时我会想强烈反驳',
+      '我倾向于先决定好要做的事再行动',
+      '我很重视遵守约定和截止日期',
+      '我的计划容易因心情而被推迟',
+      '即使是小事也容易在意很久',
+      '我的情绪切换比较快',
+      '我容易因为不安或担心而满脑子都是那件事',
+      '我被新的想法和未知的世界所吸引',
+      '我喜欢尝试和平时不同的做法',
+      '我用熟悉的方法会更安心',
+    ],
+    likertOptions: ['非常符合', '比较符合', '不确定', '不太符合', '完全不符合'],
     btnTravel: '🗾 旅游・美食推荐',
     btnCounseling: '🌱 心事倾诉',
     btnFree: '💬 随便聊聊',
@@ -356,6 +425,28 @@ const UI: Record<Lang, {
     occultBirthdateLabel: 'Silakan masukkan tanggal lahir Anda',
     occultTarotLabel: 'Ceritakan apa yang sedang Anda pikirkan (opsional)',
     occultSubmit: 'Mulai Ramalan',
+    traitLabels: {
+      extraversion: '🌟 Ekstraversi', agreeableness: '🤝 Keramahan', conscientiousness: '📅 Kehati-hatian',
+      stability: '🌊 Stabilitas Emosi', openness: '🌈 Keterbukaan',
+    },
+    personalityQuestions: [
+      'Saya bisa cukup alami mengobrol dengan orang yang baru saya temui',
+      'Tempat yang ramai membuat saya bersemangat',
+      'Waktu tenang sendirian adalah saat saya paling nyaman',
+      'Saya cenderung memikirkan perasaan orang lain terlebih dahulu',
+      'Saya ingin menghindari konflik dan menjaga pembicaraan tetap lancar',
+      'Saya cenderung membalas dengan kuat saat tidak sependapat',
+      'Saya suka menentukan apa yang harus dilakukan sebelum bertindak',
+      'Saya ingin menepati janji dan tenggat waktu dengan baik',
+      'Rencana saya cenderung tertunda tergantung suasana hati',
+      'Hal kecil pun cenderung mengganggu pikiran saya cukup lama',
+      'Suasana hati saya cukup cepat berubah',
+      'Pikiran saya cenderung dipenuhi kecemasan atau kekhawatiran',
+      'Saya tertarik pada ide baru dan dunia yang belum dikenal',
+      'Saya suka mencoba cara yang berbeda dari biasanya',
+      'Saya merasa lebih aman dengan cara yang sudah biasa',
+    ],
+    likertOptions: ['Sangat sesuai', 'Agak sesuai', 'Netral', 'Kurang sesuai', 'Sama sekali tidak sesuai'],
     btnTravel: '🗾 Info Wisata & Tempat Makan',
     btnCounseling: '🌱 Curhat',
     btnFree: '💬 Ngobrol Santai',
@@ -409,6 +500,28 @@ const UI: Record<Lang, {
     occultBirthdateLabel: 'Por favor, introduce tu fecha de nacimiento',
     occultTarotLabel: 'Cuéntanos qué te preocupa (opcional)',
     occultSubmit: 'Obtener Mi Lectura',
+    traitLabels: {
+      extraversion: '🌟 Extraversión', agreeableness: '🤝 Amabilidad', conscientiousness: '📅 Responsabilidad',
+      stability: '🌊 Estabilidad Emocional', openness: '🌈 Apertura',
+    },
+    personalityQuestions: [
+      'Puedo hablar con bastante naturalidad con personas que acabo de conocer',
+      'Los lugares animados me dan energía',
+      'Me siento más tranquilo/a pasando tiempo tranquilo a solas',
+      'Suelo pensar primero en los sentimientos de la otra persona',
+      'Prefiero evitar conflictos y mantener las conversaciones fluidas',
+      'Tiendo a responder con firmeza cuando no estoy de acuerdo',
+      'Me gusta decidir qué hacer antes de actuar',
+      'Quiero cumplir promesas y plazos correctamente',
+      'Mis planes tienden a posponerse según mi estado de ánimo',
+      'Incluso las cosas pequeñas tienden a preocuparme durante mucho tiempo',
+      'Cambio de humor con relativa rapidez',
+      'Mi mente tiende a llenarse de ansiedad o preocupación',
+      'Me atraen las ideas nuevas y los mundos desconocidos',
+      'Me gusta probar formas diferentes de hacer las cosas',
+      'Me siento más seguro/a con métodos conocidos',
+    ],
+    likertOptions: ['Totalmente de acuerdo', 'Algo de acuerdo', 'Neutral', 'Algo en desacuerdo', 'Totalmente en desacuerdo'],
     btnTravel: '🗾 Turismo y Lugares Locales',
     btnCounseling: '🌱 Hablar de Tus Sentimientos',
     btnFree: '💬 Charlar Libremente',
@@ -477,14 +590,6 @@ const PERSONALITY_QUESTIONS: { trait: Trait; reverse: boolean; text: string }[] 
   { trait: 'openness', reverse: false, text: 'いつもと違うやり方を試すのが好きだ' },
   { trait: 'openness', reverse: true, text: '慣れた方法のほうが安心できる' },
 ];
-
-const TRAIT_LABELS: Record<Trait, string> = {
-  extraversion: '🌟 外向性',
-  agreeableness: '🤝 協調性',
-  conscientiousness: '📅 誠実性',
-  stability: '🌊 情緒安定性',
-  openness: '🌈 開放性',
-};
 
 const LIKERT_OPTIONS: { value: number; label: string }[] = [
   { value: 5, label: 'とても近い' },
@@ -938,7 +1043,7 @@ export default function FortunePage() {
   useEffect(() => {
     if (!personalityUnlocked || !personalityScores || personalityResultText) return;
     const summary = (Object.keys(personalityScores) as Trait[])
-      .map((k) => `${TRAIT_LABELS[k]}:${personalityScores[k]}%`)
+      .map((k) => `${t.traitLabels[k]}:${personalityScores[k]}%`)
       .join('、');
     (async () => {
       const res2 = await fetch('/api/chat', {
@@ -1362,13 +1467,13 @@ export default function FortunePage() {
               {personalityAnswers.length + 1} / {PERSONALITY_QUESTIONS.length}
             </div>
             <div style={{ fontSize: 12, color: "#a78bfa", marginBottom: 4 }}>
-              {TRAIT_LABELS[PERSONALITY_QUESTIONS[personalityAnswers.length].trait]}
+              {t.traitLabels[PERSONALITY_QUESTIONS[personalityAnswers.length].trait]}
             </div>
             <div style={{ fontSize: 16, fontWeight: "bold", marginBottom: 20 }}>
-              {PERSONALITY_QUESTIONS[personalityAnswers.length].text}
+              {t.personalityQuestions[personalityAnswers.length]}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {LIKERT_OPTIONS.map((opt) => (
+              {LIKERT_OPTIONS.map((opt, idx) => (
                 <button
                   key={opt.value}
                   onClick={() => {
@@ -1380,7 +1485,7 @@ export default function FortunePage() {
                   }}
                   style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #ddd", background: "#f9f9f9", textAlign: "left" }}
                 >
-                  {opt.label}
+                  {t.likertOptions[idx]}
                 </button>
               ))}
             </div>
@@ -1398,7 +1503,7 @@ export default function FortunePage() {
             <div style={{ fontSize: 16, fontWeight: "bold", marginBottom: 16 }}>{t.btnPersonality}</div>
             {(Object.keys(personalityScores) as Trait[]).map((trait) => (
               <div key={trait} style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 13, marginBottom: 4 }}>{TRAIT_LABELS[trait]}：{personalityScores[trait]}%</div>
+                <div style={{ fontSize: 13, marginBottom: 4 }}>{t.traitLabels[trait]}：{personalityScores[trait]}%</div>
                 <div style={{ background: "#eee", borderRadius: 6, height: 10, overflow: "hidden" }}>
                   <div style={{ width: `${personalityScores[trait]}%`, background: "#7c4dff", height: "100%" }} />
                 </div>
