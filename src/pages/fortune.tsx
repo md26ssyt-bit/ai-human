@@ -9,6 +9,71 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 // ======================
+// ミステリアスな動く背景（「心に灯る部屋」の演出）
+// ======================
+function MysticBackground() {
+  const particles = useState(() =>
+    Array.from({ length: 22 }, (_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      size: 2 + Math.random() * 4,
+      duration: 10 + Math.random() * 14,
+      delay: Math.random() * 14,
+      hue: 260 + Math.random() * 60, // 紫〜青みの範囲
+    }))
+  )[0];
+
+  return (
+    <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
+      <div className="mystic-gradient" />
+      {particles.map((p) => (
+        <div
+          key={p.id}
+          className="mystic-particle"
+          style={{
+            left: `${p.left}%`,
+            width: p.size,
+            height: p.size,
+            animationDuration: `${p.duration}s`,
+            animationDelay: `${p.delay}s`,
+            background: `hsl(${p.hue}, 80%, 75%)`,
+            boxShadow: `0 0 ${p.size * 2}px hsl(${p.hue}, 90%, 70%)`,
+          }}
+        />
+      ))}
+      <style jsx>{`
+        .mystic-gradient {
+          position: absolute;
+          inset: -10%;
+          background: radial-gradient(ellipse at 50% 20%, #3a2260 0%, #201040 35%, #0a0616 75%);
+          animation: mysticShift 18s ease-in-out infinite;
+        }
+        @keyframes mysticShift {
+          0%, 100% { filter: hue-rotate(0deg) brightness(1); }
+          50% { filter: hue-rotate(18deg) brightness(1.15); }
+        }
+        .mystic-particle {
+          position: absolute;
+          bottom: -5%;
+          border-radius: 50%;
+          opacity: 0;
+          animation-name: floatUp;
+          animation-timing-function: ease-in-out;
+          animation-iteration-count: infinite;
+        }
+        @keyframes floatUp {
+          0% { transform: translateY(0) translateX(0); opacity: 0; }
+          10% { opacity: 0.9; }
+          50% { transform: translateY(-55vh) translateX(12px); }
+          90% { opacity: 0.7; }
+          100% { transform: translateY(-105vh) translateX(-8px); opacity: 0; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// ======================
 // Avatar（kiosk.tsxからそのまま流用）
 // ======================
 function Avatar({ vrmUrl, emotion = 'neutral', avatarY = -1.6 }: { vrmUrl: string, emotion?: string, avatarY?: number }) {
@@ -1124,6 +1189,7 @@ export default function FortunePage() {
 
   return (
     <div style={{ width: "100vw", height: "100vh", position: "relative", background: "#111" }}>
+      <MysticBackground />
       <div style={{ position: "absolute", inset: 0 }}>
         <Canvas style={{ width: '100%', height: '100%' }} camera={{ position: [0, camSettings.camY, camSettings.camZ], fov: camSettings.fov }}>
           <ResponsiveCamera baseFov={camSettings.fov} baseZ={camSettings.camZ} baseY={camSettings.camY} targetY={camSettings.targetY} />
