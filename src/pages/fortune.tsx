@@ -894,7 +894,7 @@ export default function FortunePage() {
       }
 
       setMessages(prev => [...prev, { role: "ai", text: reply }]);
-      const sentences = reply.split(/(?<=[。！？])/);
+      const sentences = reply.split(/(?<=[。！？.!?])\s*/);
       for (const s of sentences) {
         if (s.trim()) speak(s.trim());
       }

@@ -40,9 +40,9 @@ const CHARACTER_VOICES = {
     witch: { languageCode: "id-ID", name: "id-ID-Wavenet-D", rate: 0.9, pitch: -6.0 },
   },
   es: {
-    woman: { languageCode: "es-US", name: "es-US-Neural2-A", rate: 1.05 },
-    man: { languageCode: "es-US", name: "es-US-Neural2-B", rate: 0.95 },
-    witch: { languageCode: "es-US", name: "es-US-Wavenet-A", rate: 0.9, pitch: -6.0 },
+    woman: { languageCode: "es-ES", name: "es-ES-Neural2-A", rate: 1.05 },
+    man: { languageCode: "es-ES", name: "es-ES-Neural2-B", rate: 0.95 },
+    witch: { languageCode: "es-ES", name: "es-ES-Wavenet-B", rate: 0.9, pitch: -6.0 },
   },
 };
  
@@ -124,3 +124,8 @@ export default async function handler(req, res) {
     console.error("TTSエラー:", error);
     return res.status(500).json({ audioContent: null });
   }
+}
+
+
+
+
