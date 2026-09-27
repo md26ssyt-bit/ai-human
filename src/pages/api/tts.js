@@ -42,7 +42,7 @@ const CHARACTER_VOICES = {
   es: {
     woman: { languageCode: "es-ES", name: "es-ES-Neural2-A", rate: 1.05 },
     man: { languageCode: "es-ES", name: "es-ES-Neural2-B", rate: 0.95 },
-    witch: { languageCode: "es-ES", name: "es-ES-Wavenet-B", rate: 0.9, pitch: -6.0 },
+    witch: { languageCode: "es-ES", name: "es-ES-Wavenet-C", rate: 0.9, pitch: -2.0 },
   },
 };
  
@@ -125,7 +125,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ audioContent: null });
   }
 }
-
-
-
-
+ 
