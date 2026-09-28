@@ -898,6 +898,11 @@ export default function FortunePage() {
       for (const s of sentences) {
         if (s.trim()) speak(s.trim());
       }
+
+      // 「自由に話す」で無料枠の上限に達したら、そのままプレミアム登録画面へ誘導する
+      if (data.limitReached && currentMode === 'free') {
+        setShowPremiumModal(true);
+      }
     } catch (error) {
       console.error("APIエラー:", error);
       setMessages(prev => [...prev, { role: "ai", text: "すみません、通信エラーが発生しました。" }]);
