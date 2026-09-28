@@ -74,6 +74,171 @@ function MysticBackground() {
 }
 
 // ======================
+// SNS用の縦型リザルト画像（1080x1920）を生成・保存する
+// ======================
+type ShareImageOptions = {
+  heading: string;                              // 上部の小見出し（サービス名など）
+  title: string;                                // 結果のタイトル
+  bars?: { label: string; value: number }[];   // 性格診断用のバー表示
+  body?: string;                                // 占術用の本文（長い場合は末尾を省略）
+  footer: string;                               // 下部のURLなど
+};
+
+function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  // スペースで区切る言語は単語単位、日本語・中国語は1文字ずつ折り返す
+  const tokens = text.includes(' ') ? text.split(/(\s+)/) : text.split('');
+  const lines: string[] = [];
+  let current = '';
+  for (const tok of tokens) {
+    if (tok === '\n') { lines.push(current); current = ''; continue; }
+    const test = current + tok;
+    if (ctx.measureText(test).width > maxWidth && current) {
+      lines.push(current.trimEnd());
+      current = tok.trimStart();
+    } else {
+      current = test;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
+async function createShareImage(opts: ShareImageOptions): Promise<Blob | null> {
+  const W = 1080, H = 1920;
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  const font = "'Hiragino Sans','Noto Sans JP','Yu Gothic','Segoe UI',sans-serif";
+
+  // 背景：ミステリアスなグラデーション
+  const bg = ctx.createRadialGradient(W / 2, 400, 100, W / 2, 900, 1400);
+  bg.addColorStop(0, '#4a2b7a');
+  bg.addColorStop(0.5, '#221244');
+  bg.addColorStop(1, '#080512');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // 光の粒
+  for (let i = 0; i < 60; i++) {
+    const x = Math.random() * W, y = Math.random() * H, r = 1 + Math.random() * 3;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = `hsla(${260 + Math.random() * 60}, 80%, 80%, ${0.3 + Math.random() * 0.6})`;
+    ctx.shadowColor = 'rgba(190,160,255,0.9)';
+    ctx.shadowBlur = r * 4;
+    ctx.fill();
+  }
+  ctx.shadowBlur = 0;
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+
+  // 見出し
+  ctx.fillStyle = 'rgba(255,255,255,0.75)';
+  ctx.font = `bold 48px ${font}`;
+  ctx.fillText(opts.heading, W / 2, 200);
+
+  // 区切り線
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(240, 250);
+  ctx.lineTo(W - 240, 250);
+  ctx.stroke();
+
+  // タイトル
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `bold 76px ${font}`;
+  ctx.fillText(opts.title, W / 2, 400);
+
+  if (opts.bars) {
+    // 性格診断：5指標のバー
+    ctx.textAlign = 'left';
+    let y = 560;
+    for (const b of opts.bars) {
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold 46px ${font}`;
+      ctx.fillText(b.label, 120, y);
+      ctx.textAlign = 'right';
+      ctx.fillText(`${b.value}%`, W - 120, y);
+      ctx.textAlign = 'left';
+
+      const trackX = 120, trackY = y + 30, trackW = W - 240, trackH = 36;
+      ctx.fillStyle = 'rgba(255,255,255,0.18)';
+      roundRectPath(ctx, trackX, trackY, trackW, trackH, 18);
+      ctx.fill();
+      const fillW = Math.max(trackH, (trackW * b.value) / 100);
+      const grad = ctx.createLinearGradient(trackX, 0, trackX + trackW, 0);
+      grad.addColorStop(0, '#a78bfa');
+      grad.addColorStop(1, '#f0abfc');
+      ctx.fillStyle = grad;
+      roundRectPath(ctx, trackX, trackY, fillW, trackH, 18);
+      ctx.fill();
+      y += 200;
+    }
+    ctx.textAlign = 'center';
+  } else if (opts.body) {
+    // 占術：本文（収まらない分は省略）
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.font = `40px ${font}`;
+    const lines = wrapLines(ctx, opts.body, W - 240);
+    const maxLines = 18;
+    const shown = lines.slice(0, maxLines);
+    if (lines.length > maxLines) shown[maxLines - 1] = shown[maxLines - 1].replace(/.{0,1}$/, '…');
+    let y = 540;
+    for (const line of shown) {
+      ctx.fillText(line, 120, y);
+      y += 62;
+    }
+    ctx.textAlign = 'center';
+  }
+
+  // フッター
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.font = `bold 44px ${font}`;
+  ctx.fillText(opts.footer, W / 2, 1820);
+
+  return new Promise((resolve) => canvas.toBlob((b) => resolve(b), 'image/png'));
+}
+
+// スマホなら共有シート（Instagram/TikTokなどへ直接）、PCならダウンロードで保存する
+async function saveShareImage(blob: Blob, filename: string) {
+  const file = new File([blob], filename, { type: 'image/png' });
+  const nav = navigator as Navigator & { canShare?: (data: ShareData) => boolean };
+  try {
+    if (nav.canShare && nav.canShare({ files: [file] })) {
+      await nav.share({ files: [file] });
+      return;
+    }
+  } catch (e) {
+    if ((e as Error).name === 'AbortError') return; // ユーザーが共有をキャンセルした場合は何もしない
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ======================
 // Avatar（kiosk.tsxからそのまま流用）
 // ======================
 function Avatar({ vrmUrl, emotion = 'neutral', avatarY = -1.6 }: { vrmUrl: string, emotion?: string, avatarY?: number }) {
@@ -214,6 +379,11 @@ const UI: Record<Lang, {
   occultBirthdateLabel: string;
   occultTarotLabel: string;
   occultSubmit: string;
+  shareImageButton: string;
+  unlockDetailButton: string;
+  loadingText: string;
+  alreadySubscribed: string;
+  subscribeFailed: string;
   traitLabels: Record<'extraversion' | 'agreeableness' | 'conscientiousness' | 'stability' | 'openness', string>;
   personalityQuestions: string[];
   likertOptions: string[];
@@ -262,6 +432,11 @@ const UI: Record<Lang, {
     occultBirthdateLabel: '生年月日を入力してください',
     occultTarotLabel: '気になっていることがあれば教えてください（未入力でもOK）',
     occultSubmit: '占ってもらう',
+    shareImageButton: '📸 SNS用の画像を保存',
+    unlockDetailButton: '🔓 詳しい結果を見る',
+    loadingText: '読み込み中...',
+    alreadySubscribed: 'このメールアドレスは、すでにプレミアムプランに登録されています。',
+    subscribeFailed: '登録画面を開けませんでした。時間をおいてもう一度お試しください。',
     traitLabels: {
       extraversion: '🌟 外向性', agreeableness: '🤝 協調性', conscientiousness: '📅 誠実性',
       stability: '🌊 情緒安定性', openness: '🌈 開放性',
@@ -339,6 +514,11 @@ const UI: Record<Lang, {
     occultBirthdateLabel: 'Please enter your date of birth',
     occultTarotLabel: "Tell us what's on your mind (optional)",
     occultSubmit: 'Get My Reading',
+    shareImageButton: '📸 Save image for social media',
+    unlockDetailButton: '🔓 See detailed results',
+    loadingText: 'Loading...',
+    alreadySubscribed: 'This email address is already subscribed to the Premium Plan.',
+    subscribeFailed: 'Could not open the checkout page. Please try again later.',
     traitLabels: {
       extraversion: '🌟 Extraversion', agreeableness: '🤝 Agreeableness', conscientiousness: '📅 Conscientiousness',
       stability: '🌊 Emotional Stability', openness: '🌈 Openness',
@@ -415,6 +595,11 @@ const UI: Record<Lang, {
     occultBirthdateLabel: '请输入您的出生日期',
     occultTarotLabel: '请告诉我们您在意的事情（可不填）',
     occultSubmit: '开始占卜',
+    shareImageButton: '📸 保存社交媒体分享图',
+    unlockDetailButton: '🔓 查看详细结果',
+    loadingText: '加载中...',
+    alreadySubscribed: '该邮箱已订阅高级会员。',
+    subscribeFailed: '无法打开付款页面，请稍后再试。',
     traitLabels: {
       extraversion: '🌟 外向性', agreeableness: '🤝 亲和性', conscientiousness: '📅 尽责性',
       stability: '🌊 情绪稳定性', openness: '🌈 开放性',
@@ -490,6 +675,11 @@ const UI: Record<Lang, {
     occultBirthdateLabel: 'Silakan masukkan tanggal lahir Anda',
     occultTarotLabel: 'Ceritakan apa yang sedang Anda pikirkan (opsional)',
     occultSubmit: 'Mulai Ramalan',
+    shareImageButton: '📸 Simpan gambar untuk media sosial',
+    unlockDetailButton: '🔓 Lihat hasil lengkap',
+    loadingText: 'Memuat...',
+    alreadySubscribed: 'Alamat email ini sudah berlangganan Paket Premium.',
+    subscribeFailed: 'Tidak dapat membuka halaman pembayaran. Silakan coba lagi nanti.',
     traitLabels: {
       extraversion: '🌟 Ekstraversi', agreeableness: '🤝 Keramahan', conscientiousness: '📅 Kehati-hatian',
       stability: '🌊 Stabilitas Emosi', openness: '🌈 Keterbukaan',
@@ -565,6 +755,11 @@ const UI: Record<Lang, {
     occultBirthdateLabel: 'Por favor, introduce tu fecha de nacimiento',
     occultTarotLabel: 'Cuéntanos qué te preocupa (opcional)',
     occultSubmit: 'Obtener Mi Lectura',
+    shareImageButton: '📸 Guardar imagen para redes sociales',
+    unlockDetailButton: '🔓 Ver resultados detallados',
+    loadingText: 'Cargando...',
+    alreadySubscribed: 'Este correo electrónico ya está suscrito al Plan Premium.',
+    subscribeFailed: 'No se pudo abrir la página de pago. Inténtalo de nuevo más tarde.',
     traitLabels: {
       extraversion: '🌟 Extraversión', agreeableness: '🤝 Amabilidad', conscientiousness: '📅 Responsabilidad',
       stability: '🌊 Estabilidad Emocional', openness: '🌈 Apertura',
@@ -733,6 +928,7 @@ export default function FortunePage() {
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [premiumEmail, setPremiumEmail] = useState('');
   const [premiumLoading, setPremiumLoading] = useState(false);
+  const [premiumError, setPremiumError] = useState('');
   const [showPremiumThanks, setShowPremiumThanks] = useState(false);
   const [personalityAnswers, setPersonalityAnswers] = useState<number[]>([]);
   const [personalityScores, setPersonalityScores] = useState<Record<Trait, number> | null>(null);
@@ -1134,22 +1330,40 @@ export default function FortunePage() {
 
   // プレミアムプラン登録：メールアドレスを送ってCheckout Sessionへ遷移
   const handleSubscribe = async () => {
-    if (!premiumEmail || !premiumEmail.includes('@')) return;
+    const email = premiumEmail.trim().toLowerCase(); // サーバー側と同じ基準（小文字）に統一する
+    if (!email || !email.includes('@')) return;
     setPremiumLoading(true);
-    localStorage.setItem('memberEmail', premiumEmail); // 会員判定に使うため保存しておく
+    setPremiumError('');
+    // 会員判定に使うため、決済ページへ移動する前に保存しておく（失敗した場合は元に戻す）
+    const previousEmail = localStorage.getItem('memberEmail');
+    localStorage.setItem('memberEmail', email);
+    const restorePrevious = () => {
+      if (previousEmail) localStorage.setItem('memberEmail', previousEmail);
+      else localStorage.removeItem('memberEmail');
+    };
     try {
       const res = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: premiumEmail, lang }),
+        body: JSON.stringify({ email, lang }),
       });
       const data = await res.json();
+      if (res.status === 409 && data.error === 'already_subscribed') {
+        restorePrevious();
+        setPremiumError(t.alreadySubscribed);
+        setPremiumLoading(false);
+        return;
+      }
       if (data.url) {
         window.location.href = data.url;
       } else {
+        restorePrevious();
+        setPremiumError(t.subscribeFailed);
         setPremiumLoading(false);
       }
     } catch {
+      restorePrevious();
+      setPremiumError(t.subscribeFailed);
       setPremiumLoading(false);
     }
   };
@@ -1317,12 +1531,6 @@ export default function FortunePage() {
           <button onClick={() => startMode('travel')} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>{t.btnTravel}</button>
           <button onClick={() => startMode('counseling')} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>{t.btnCounseling}</button>
           <button onClick={() => setPendingFreeStart(true)} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>{t.btnFree}</button>
-          <button
-            onClick={() => setShowPremiumModal(true)}
-            style={{ ...menuButtonStyle, pointerEvents: "auto", background: "#7c4dff", color: "#fff" }}
-          >
-            {t.btnPremium}
-          </button>
         </div>
       )}
 
@@ -1337,13 +1545,16 @@ export default function FortunePage() {
             <input
               type="email"
               value={premiumEmail}
-              onChange={(e) => setPremiumEmail(e.target.value)}
+              onChange={(e) => { setPremiumEmail(e.target.value); setPremiumError(''); }}
               placeholder={t.premiumEmailPlaceholder}
-              style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #ccc", marginBottom: 16, fontSize: 14 }}
+              style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #ccc", marginBottom: premiumError ? 8 : 16, fontSize: 14 }}
             />
+            {premiumError && (
+              <div style={{ color: "#c62828", fontSize: 13, marginBottom: 16 }}>{premiumError}</div>
+            )}
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <button
-                onClick={() => setShowPremiumModal(false)}
+                onClick={() => { setShowPremiumModal(false); setPremiumError(''); }}
                 style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #ccc", background: "#fff" }}
               >
                 {t.premiumCancel}
@@ -1506,26 +1717,50 @@ export default function FortunePage() {
         </div>
       )}
 
-      {occultStep === 'result' && occultType && (
+      {occultStep === 'result' && occultType && (() => {
+        const occultTitle = {
+          astrology: t.occultAstrology,
+          numerology: t.occultNumerology,
+          four_pillars: t.occultFourPillars,
+          tarot: t.occultTarot,
+        }[occultType];
+        return (
         <div style={{
           position: "absolute", inset: 0, display: "flex", flexDirection: "column",
           alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.75)",
           padding: 24,
         }}>
           <div style={{ background: "#fff", borderRadius: 12, padding: 24, width: "90%", maxWidth: 420, maxHeight: "80vh", overflowY: "auto" }}>
-            <div style={{ fontSize: 16, fontWeight: "bold", marginBottom: 12 }}>{OCCULT_LABELS[occultType]}</div>
+            <div style={{ fontSize: 16, fontWeight: "bold", marginBottom: 12 }}>{occultTitle}</div>
             <div style={{ fontSize: 14, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
-              {occultResultText || '読み込み中...'}
+              {occultResultText || t.loadingText}
             </div>
+            {occultResultText && (
+              <button
+                onClick={async () => {
+                  const blob = await createShareImage({
+                    heading: t.topTitle,
+                    title: occultTitle.replace(/^\S+\s/, ''),
+                    body: occultResultText,
+                    footer: 'adikio.com/fortune',
+                  });
+                  if (blob) await saveShareImage(blob, 'adikio-result.png');
+                }}
+                style={{ marginTop: 16, width: "100%", padding: "12px", borderRadius: 8, border: "none", background: "#7c4dff", color: "#fff", fontWeight: "bold" }}
+              >
+                {t.shareImageButton}
+              </button>
+            )}
             <button
               onClick={() => { setOccultStep('closed'); setOccultType(null); setOccultInput(''); setOccultResultText(''); setMode('menu'); }}
-              style={{ marginTop: 16, width: "100%", padding: "10px", borderRadius: 8, border: "1px solid #ccc", background: "#fff" }}
+              style={{ marginTop: 8, width: "100%", padding: "10px", borderRadius: 8, border: "1px solid #ccc", background: "#fff" }}
             >
               {t.back}
             </button>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {mode === 'personality' && personalityAnswers.length < PERSONALITY_QUESTIONS.length && (
         <div style={{
@@ -1581,18 +1816,33 @@ export default function FortunePage() {
               </div>
             ))}
 
+            <button
+              onClick={async () => {
+                const blob = await createShareImage({
+                  heading: t.topTitle,
+                  title: t.btnPersonality.replace(/^\S+\s/, ''),
+                  bars: (Object.keys(personalityScores) as Trait[]).map((k) => ({ label: t.traitLabels[k], value: personalityScores[k] })),
+                  footer: 'adikio.com/fortune',
+                });
+                if (blob) await saveShareImage(blob, 'adikio-personality.png');
+              }}
+              style={{ marginTop: 12, width: "100%", padding: "12px", borderRadius: 8, border: "none", background: "#f0abfc", color: "#3b0764", fontWeight: "bold" }}
+            >
+              {t.shareImageButton}
+            </button>
+
             {!personalityUnlocked && (
               <button
                 onClick={() => handleUnlockPersonality(personalityScores)}
                 style={{ marginTop: 12, width: "100%", padding: "12px", borderRadius: 8, border: "none", background: "#7c4dff", color: "#fff", fontWeight: "bold" }}
               >
-                🔓 詳しい結果を見る（{currency === 'jpy' ? '¥100' : '$1'}）
+                {t.unlockDetailButton}（{currency === 'jpy' ? '¥100' : '$1'}）
               </button>
             )}
 
             {personalityUnlocked && (
               <div style={{ marginTop: 16, fontSize: 14, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
-                {personalityResultText || '読み込み中...'}
+                {personalityResultText || t.loadingText}
               </div>
             )}
 

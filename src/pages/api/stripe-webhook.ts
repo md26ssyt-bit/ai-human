@@ -35,7 +35,9 @@ async function upsertSubscription(params: {
   status: string;
   currentPeriodEnd: number | null;
 }) {
-  const { email, stripeCustomerId, stripeSubscriptionId, status, currentPeriodEnd } = params;
+  const { stripeCustomerId, stripeSubscriptionId, status, currentPeriodEnd } = params;
+  // 会員判定と同じ基準で照合できるよう、メールは小文字に統一して保存する
+  const email = params.email.trim().toLowerCase();
  
   await supabaseAdmin
     .from('fortune_subscriptions')

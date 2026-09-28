@@ -138,11 +138,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
  
       // ====== サブスク会員かどうかを確認（会員なら無料枠チェックをスキップ）======
       let isPremiumMember = false;
-      if (email && typeof email === 'string') {
+      // メールは小文字に統一して照合する（大文字小文字の違いで会員と認識されない事故を防ぐ）
+      const memberEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+      if (memberEmail) {
         const { data: subData } = await supabaseAdmin
           .from('fortune_subscriptions')
           .select('status')
-          .eq('email', email)
+          .eq('email', memberEmail)
           .maybeSingle();
         if (subData?.status === 'active') {
           isPremiumMember = true;
@@ -154,7 +156,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const limitConfig = FREE_LIMITS[mode];
       if (limitConfig) {
         // プレミアム会員は「メールアドレス単位」で1日300回、無料ユーザーは「IP単位」でモードごとの回数
-        const identifier = isPremiumMember && email ? `premium:${email}` : getClientIp(req);
+        const identifier = isPremiumMember && memberEmail ? `premium:${memberEmail}` : getClientIp(req);
         const groupName = isPremiumMember ? 'premium_daily' : limitConfig.group;
         const limitCount = isPremiumMember ? 200 : limitConfig.limit;
  
