@@ -385,6 +385,7 @@ const UI: Record<Lang, {
   alreadySubscribed: string;
   subscribeFailed: string;
   occultYearlyPdf: string;
+  tarotDeepPdf: string;
   travelPdfButton: string;
   trisetsuPdfButton: string;
   pdfGenerating: string;
@@ -443,6 +444,7 @@ const UI: Record<Lang, {
     alreadySubscribed: 'このメールアドレスは、すでにプレミアムプランに登録されています。',
     subscribeFailed: '登録画面を開けませんでした。時間をおいてもう一度お試しください。',
     occultYearlyPdf: '📜 年間鑑定書PDF',
+    tarotDeepPdf: '🃏 タロット本格鑑定書PDF',
     travelPdfButton: '📄 観光プランをPDFで保存',
     trisetsuPdfButton: '📖 取説・ダークサイド診断PDF',
     pdfGenerating: 'PDFを作成しています…少々お待ちください',
@@ -530,6 +532,7 @@ const UI: Record<Lang, {
     alreadySubscribed: 'This email address is already subscribed to the Premium Plan.',
     subscribeFailed: 'Could not open the checkout page. Please try again later.',
     occultYearlyPdf: '📜 Yearly Fortune Report (PDF)',
+    tarotDeepPdf: '🃏 In-Depth Tarot Reading (PDF)',
     travelPdfButton: '📄 Save travel plan as PDF',
     trisetsuPdfButton: '📖 Instruction Manual & Dark Side PDF',
     pdfGenerating: 'Creating your PDF… please wait',
@@ -616,6 +619,7 @@ const UI: Record<Lang, {
     alreadySubscribed: '该邮箱已订阅高级会员。',
     subscribeFailed: '无法打开付款页面，请稍后再试。',
     occultYearlyPdf: '📜 年度运势鉴定书PDF',
+    tarotDeepPdf: '🃏 深度塔罗鉴定书PDF',
     travelPdfButton: '📄 保存观光行程PDF',
     trisetsuPdfButton: '📖 使用说明书・暗黑面诊断PDF',
     pdfGenerating: '正在生成PDF，请稍候…',
@@ -701,6 +705,7 @@ const UI: Record<Lang, {
     alreadySubscribed: 'Alamat email ini sudah berlangganan Paket Premium.',
     subscribeFailed: 'Tidak dapat membuka halaman pembayaran. Silakan coba lagi nanti.',
     occultYearlyPdf: '📜 Laporan Ramalan Tahunan (PDF)',
+    tarotDeepPdf: '🃏 Pembacaan Tarot Mendalam (PDF)',
     travelPdfButton: '📄 Simpan rencana wisata sebagai PDF',
     trisetsuPdfButton: '📖 PDF Buku Panduan & Sisi Gelap',
     pdfGenerating: 'Membuat PDF… mohon tunggu',
@@ -786,6 +791,7 @@ const UI: Record<Lang, {
     alreadySubscribed: 'Este correo electrónico ya está suscrito al Plan Premium.',
     subscribeFailed: 'No se pudo abrir la página de pago. Inténtalo de nuevo más tarde.',
     occultYearlyPdf: '📜 Informe de Fortuna Anual (PDF)',
+    tarotDeepPdf: '🃏 Lectura Profunda de Tarot (PDF)',
     travelPdfButton: '📄 Guardar plan de viaje en PDF',
     trisetsuPdfButton: '📖 PDF de Manual e Lado Oscuro',
     pdfGenerating: 'Creando tu PDF… espera un momento',
@@ -967,7 +973,7 @@ export default function FortunePage() {
   const [talkStyle, setTalkStyle] = useState<string | null>(null);
   const [pendingFreeStart, setPendingFreeStart] = useState(false);
   const [occultStep, setOccultStep] = useState<'closed' | 'select' | 'input' | 'result'>('closed');
-  const [occultType, setOccultType] = useState<'astrology' | 'numerology' | 'four_pillars' | 'tarot' | 'yearly_pdf' | null>(null);
+  const [occultType, setOccultType] = useState<'astrology' | 'numerology' | 'four_pillars' | 'tarot' | 'yearly_pdf' | 'tarot_deep' | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfStep, setPdfStep] = useState<'closed' | 'result'>('closed');
   const [pdfError, setPdfError] = useState('');
@@ -1310,7 +1316,7 @@ export default function FortunePage() {
   }, []);
 
   const OCCULT_LABELS: Record<string, string> = {
-    astrology: '西洋占星術', numerology: '数秘術', four_pillars: '四柱推命', tarot: 'タロット', yearly_pdf: '年間鑑定書PDF',
+    astrology: '西洋占星術', numerology: '数秘術', four_pillars: '四柱推命', tarot: 'タロット', yearly_pdf: '年間鑑定書PDF', tarot_deep: 'タロット本格鑑定書PDF',
   };
 
   // PDFレポートを¥100以外の金額で解放する（年間鑑定書・観光プラン・トリセツ診断）
@@ -1774,6 +1780,12 @@ export default function FortunePage() {
               >
                 {t.occultYearlyPdf}（{currency === 'jpy' ? '¥3,000' : '$20'}）
               </button>
+              <button
+                onClick={() => { setOccultType('tarot_deep'); setOccultInput(''); setOccultResultText(''); setOccultStep('input'); }}
+                style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #ddd", background: "#f3ecff", textAlign: "left" }}
+              >
+                {t.tarotDeepPdf}（{currency === 'jpy' ? '¥2,000' : '$13'}）
+              </button>
             </div>
             <button
               onClick={() => setOccultStep('closed')}
@@ -1793,9 +1805,9 @@ export default function FortunePage() {
         }}>
           <div style={{ background: "#fff", borderRadius: 12, padding: 24, width: "90%", maxWidth: 420 }}>
             <div style={{ fontSize: 15, fontWeight: "bold", marginBottom: 16 }}>
-              {occultType === 'tarot' ? t.occultTarotLabel : t.occultBirthdateLabel}
+              {(occultType === 'tarot' || occultType === 'tarot_deep') ? t.occultTarotLabel : t.occultBirthdateLabel}
             </div>
-            {occultType === 'tarot' ? (
+            {(occultType === 'tarot' || occultType === 'tarot_deep') ? (
               <textarea
                 value={occultInput}
                 onChange={(e) => setOccultInput(e.target.value)}
@@ -1815,15 +1827,20 @@ export default function FortunePage() {
                 if (occultType === 'yearly_pdf') {
                   setOccultStep('closed');
                   handleUnlockPdf('occult_yearly', { birthdate: occultInput }, t.occultYearlyPdf, 3000, 20);
+                } else if (occultType === 'tarot_deep') {
+                  setOccultStep('closed');
+                  handleUnlockPdf('tarot_deep', { concern: occultInput }, t.tarotDeepPdf, 2000, 13);
                 } else {
                   handleUnlockOccult();
                 }
               }}
-              disabled={occultType !== 'tarot' && !occultInput}
+              disabled={occultType !== 'tarot' && occultType !== 'tarot_deep' && !occultInput}
               style={{ width: "100%", padding: 12, borderRadius: 8, border: "none", background: "#7c4dff", color: "#fff", fontWeight: "bold", opacity: (occultType !== 'tarot' && !occultInput) ? 0.5 : 1 }}
             >
               {occultType === 'yearly_pdf'
                 ? `${t.occultSubmit}（${currency === 'jpy' ? '¥3,000' : '$20'}）`
+                : occultType === 'tarot_deep'
+                ? `${t.occultSubmit}（${currency === 'jpy' ? '¥2,000' : '$13'}）`
                 : `${t.occultSubmit}（${currency === 'jpy' ? '¥100' : '$1'}）`}
             </button>
             <button
@@ -1843,6 +1860,7 @@ export default function FortunePage() {
           four_pillars: t.occultFourPillars,
           tarot: t.occultTarot,
           yearly_pdf: t.occultYearlyPdf,
+          tarot_deep: t.tarotDeepPdf,
         }[occultType];
         return (
         <div style={{

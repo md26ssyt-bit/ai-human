@@ -12,12 +12,13 @@ const LANG_INSTRUCTIONS: Record<string, string> = {
   es: 'Escribe todo en español.',
 };
  
-type ReportType = 'occult_yearly' | 'travel_plan' | 'trisetsu_darkside';
+type ReportType = 'occult_yearly' | 'travel_plan' | 'trisetsu_darkside' | 'tarot_deep';
  
 const REPORT_TITLES: Record<ReportType, Record<string, string>> = {
   occult_yearly: { ja: '年間鑑定書', en: 'Yearly Fortune Report', zh: '年度运势鉴定书', id: 'Laporan Ramalan Tahunan', es: 'Informe de Fortuna Anual' },
   travel_plan: { ja: '観光プランシート', en: 'Travel Plan Sheet', zh: '观光行程方案', id: 'Rencana Perjalanan Wisata', es: 'Plan de Viaje' },
   trisetsu_darkside: { ja: 'あなたの取扱説明書', en: 'Your Instruction Manual', zh: '你的使用说明书', id: 'Buku Panduan Dirimu', es: 'Tu Manual de Instrucciones' },
+  tarot_deep: { ja: 'タロット本格鑑定書', en: 'In-Depth Tarot Reading', zh: '深度塔罗鉴定书', id: 'Pembacaan Tarot Mendalam', es: 'Lectura Profunda de Tarot' },
 };
  
 function buildPrompt(reportType: ReportType, payload: any): string {
@@ -41,7 +42,8 @@ function buildPrompt(reportType: ReportType, payload: any): string {
 ### 移動のヒント
 各見出しごとに、具体的なスポット名・目安の滞在時間・移動手段や所要時間の目安を含めて4〜6文程度でまとめてください。`;
   }
-  return `あなたは性格診断の専門家です。ビッグファイブ性格診断のスコア（${payload.scoresText}）をもとに、以下の見出しをそのまま使ってまとめてください（見出しは「### 」で始めてください）。
+  if (reportType === 'trisetsu_darkside') {
+    return `あなたは性格診断の専門家です。ビッグファイブ性格診断のスコア（${payload.scoresText}）をもとに、以下の見出しをそのまま使ってまとめてください（見出しは「### 」で始めてください）。
 ### あなたの取扱説明書
 （周りの人がこの人とどう接するとうまくいくか、具体的なアドバイスを5〜7文で）
 ### 性格の光の面
@@ -50,6 +52,14 @@ function buildPrompt(reportType: ReportType, payload: any): string {
 （ストレスがかかったときに出やすい行動傾向や気をつけたい点を、傷つけないやわらかい表現で4〜6文で。断定しすぎず、あくまでエンターテインメントとしての診断であることが伝わる書き方にしてください）
 ### 相性の良いタイプ・気をつけたいタイプ
 （4〜6文で）`;
+  }
+  return `あなたは経験豊かなタロット占い師です。ユーザーが気にしていること「${payload.concern || '（特になし。全体的な運勢について）'}」について、大アルカナ22枚の中から3枚（①現状②障害・課題③今後の展開）を引いたという設定で、本格的な鑑定書を作成してください。
+以下の見出しをそのまま使ってください（見出しは「### 」で始めてください）。
+### 1枚目：現状（カード名を明記）
+### 2枚目：障害・課題（カード名を明記）
+### 3枚目：今後の展開（カード名を明記）
+### 総合メッセージ
+各見出しごとに、カードの意味を絡めながら4〜6文程度で、楽しく前向きな口調でまとめてください。「総合メッセージ」は3枚のつながりを踏まえた締めくくりにしてください。`;
 }
  
 async function callGemini(prompt: string, lang: string): Promise<string> {
