@@ -384,6 +384,11 @@ const UI: Record<Lang, {
   loadingText: string;
   alreadySubscribed: string;
   subscribeFailed: string;
+  occultYearlyPdf: string;
+  travelPdfButton: string;
+  trisetsuPdfButton: string;
+  pdfGenerating: string;
+  pdfFailed: string;
   traitLabels: Record<'extraversion' | 'agreeableness' | 'conscientiousness' | 'stability' | 'openness', string>;
   personalityQuestions: string[];
   likertOptions: string[];
@@ -437,6 +442,11 @@ const UI: Record<Lang, {
     loadingText: '読み込み中...',
     alreadySubscribed: 'このメールアドレスは、すでにプレミアムプランに登録されています。',
     subscribeFailed: '登録画面を開けませんでした。時間をおいてもう一度お試しください。',
+    occultYearlyPdf: '📜 年間鑑定書PDF',
+    travelPdfButton: '📄 観光プランをPDFで保存',
+    trisetsuPdfButton: '📖 取説・ダークサイド診断PDF',
+    pdfGenerating: 'PDFを作成しています…少々お待ちください',
+    pdfFailed: 'PDFの作成に失敗しました。もう一度お試しください。',
     traitLabels: {
       extraversion: '🌟 外向性', agreeableness: '🤝 協調性', conscientiousness: '📅 誠実性',
       stability: '🌊 情緒安定性', openness: '🌈 開放性',
@@ -519,6 +529,11 @@ const UI: Record<Lang, {
     loadingText: 'Loading...',
     alreadySubscribed: 'This email address is already subscribed to the Premium Plan.',
     subscribeFailed: 'Could not open the checkout page. Please try again later.',
+    occultYearlyPdf: '📜 Yearly Fortune Report (PDF)',
+    travelPdfButton: '📄 Save travel plan as PDF',
+    trisetsuPdfButton: '📖 Instruction Manual & Dark Side PDF',
+    pdfGenerating: 'Creating your PDF… please wait',
+    pdfFailed: 'Failed to create the PDF. Please try again.',
     traitLabels: {
       extraversion: '🌟 Extraversion', agreeableness: '🤝 Agreeableness', conscientiousness: '📅 Conscientiousness',
       stability: '🌊 Emotional Stability', openness: '🌈 Openness',
@@ -600,6 +615,11 @@ const UI: Record<Lang, {
     loadingText: '加载中...',
     alreadySubscribed: '该邮箱已订阅高级会员。',
     subscribeFailed: '无法打开付款页面，请稍后再试。',
+    occultYearlyPdf: '📜 年度运势鉴定书PDF',
+    travelPdfButton: '📄 保存观光行程PDF',
+    trisetsuPdfButton: '📖 使用说明书・暗黑面诊断PDF',
+    pdfGenerating: '正在生成PDF，请稍候…',
+    pdfFailed: 'PDF生成失败，请重试。',
     traitLabels: {
       extraversion: '🌟 外向性', agreeableness: '🤝 亲和性', conscientiousness: '📅 尽责性',
       stability: '🌊 情绪稳定性', openness: '🌈 开放性',
@@ -680,6 +700,11 @@ const UI: Record<Lang, {
     loadingText: 'Memuat...',
     alreadySubscribed: 'Alamat email ini sudah berlangganan Paket Premium.',
     subscribeFailed: 'Tidak dapat membuka halaman pembayaran. Silakan coba lagi nanti.',
+    occultYearlyPdf: '📜 Laporan Ramalan Tahunan (PDF)',
+    travelPdfButton: '📄 Simpan rencana wisata sebagai PDF',
+    trisetsuPdfButton: '📖 PDF Buku Panduan & Sisi Gelap',
+    pdfGenerating: 'Membuat PDF… mohon tunggu',
+    pdfFailed: 'Gagal membuat PDF. Silakan coba lagi.',
     traitLabels: {
       extraversion: '🌟 Ekstraversi', agreeableness: '🤝 Keramahan', conscientiousness: '📅 Kehati-hatian',
       stability: '🌊 Stabilitas Emosi', openness: '🌈 Keterbukaan',
@@ -760,6 +785,11 @@ const UI: Record<Lang, {
     loadingText: 'Cargando...',
     alreadySubscribed: 'Este correo electrónico ya está suscrito al Plan Premium.',
     subscribeFailed: 'No se pudo abrir la página de pago. Inténtalo de nuevo más tarde.',
+    occultYearlyPdf: '📜 Informe de Fortuna Anual (PDF)',
+    travelPdfButton: '📄 Guardar plan de viaje en PDF',
+    trisetsuPdfButton: '📖 PDF de Manual e Lado Oscuro',
+    pdfGenerating: 'Creando tu PDF… espera un momento',
+    pdfFailed: 'No se pudo crear el PDF. Inténtalo de nuevo.',
     traitLabels: {
       extraversion: '🌟 Extraversión', agreeableness: '🤝 Amabilidad', conscientiousness: '📅 Responsabilidad',
       stability: '🌊 Estabilidad Emocional', openness: '🌈 Apertura',
@@ -937,7 +967,10 @@ export default function FortunePage() {
   const [talkStyle, setTalkStyle] = useState<string | null>(null);
   const [pendingFreeStart, setPendingFreeStart] = useState(false);
   const [occultStep, setOccultStep] = useState<'closed' | 'select' | 'input' | 'result'>('closed');
-  const [occultType, setOccultType] = useState<'astrology' | 'numerology' | 'four_pillars' | 'tarot' | null>(null);
+  const [occultType, setOccultType] = useState<'astrology' | 'numerology' | 'four_pillars' | 'tarot' | 'yearly_pdf' | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfStep, setPdfStep] = useState<'closed' | 'result'>('closed');
+  const [pdfError, setPdfError] = useState('');
   const [occultInput, setOccultInput] = useState('');
   const [occultResultText, setOccultResultText] = useState('');
   const [inputText, setInputText] = useState('');
@@ -1240,10 +1273,61 @@ export default function FortunePage() {
         localStorage.removeItem('pendingOccult');
       }
     }
+    if (params.get('pdf_unlocked') === '1') {
+      const saved = localStorage.getItem('pendingPdf');
+      if (saved) {
+        const pending = JSON.parse(saved);
+        if (pending.lang) { setLang(pending.lang); langRef.current = pending.lang; }
+        characterRef.current = pending.character || 'woman';
+        setCharacter(pending.character || 'woman');
+        setPdfLoading(true);
+        setPdfStep('result');
+        localStorage.removeItem('pendingPdf');
+        (async () => {
+          try {
+            const res = await fetch('/api/generate-report-pdf', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ reportType: pending.reportType, payload: pending.payload, lang: pending.lang }),
+            });
+            if (!res.ok) throw new Error('failed');
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `adikio-${pending.reportType}.pdf`;
+            a.click();
+            URL.revokeObjectURL(url);
+            setPdfError('');
+          } catch {
+            setPdfError((UI[(pending.lang as Lang) || 'ja']).pdfFailed);
+          } finally {
+            setPdfLoading(false);
+          }
+        })();
+      }
+    }
   }, []);
 
   const OCCULT_LABELS: Record<string, string> = {
-    astrology: '西洋占星術', numerology: '数秘術', four_pillars: '四柱推命', tarot: 'タロット',
+    astrology: '西洋占星術', numerology: '数秘術', four_pillars: '四柱推命', tarot: 'タロット', yearly_pdf: '年間鑑定書PDF',
+  };
+
+  // PDFレポートを¥100以外の金額で解放する（年間鑑定書・観光プラン・トリセツ診断）
+  const handleUnlockPdf = async (reportType: string, payload: any, description: string, amountJpy: number, amountUsd: number) => {
+    localStorage.setItem('pendingPdf', JSON.stringify({ reportType, payload, character: characterRef.current, lang }));
+    const res = await fetch('/api/create-payment-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: currency === 'jpy' ? amountJpy : amountUsd,
+        currency,
+        description,
+        successUrl: `${window.location.origin}/fortune?pdf_unlocked=1`,
+      }),
+    });
+    const data = await res.json();
+    if (data.url) window.location.href = data.url;
   };
 
   // 占術の結果を¥100で解放する
@@ -1584,6 +1668,26 @@ export default function FortunePage() {
         </div>
       )}
 
+      {pdfStep === 'result' && (
+        <div style={{
+          position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.75)",
+          padding: 24,
+        }}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 24, width: "90%", maxWidth: 380, textAlign: "center" }}>
+            {pdfLoading && <div style={{ fontSize: 14 }}>{t.pdfGenerating}</div>}
+            {!pdfLoading && !pdfError && <div style={{ fontSize: 14 }}>✅</div>}
+            {!pdfLoading && pdfError && <div style={{ fontSize: 14, color: "#c62828" }}>{pdfError}</div>}
+            <button
+              onClick={() => { setPdfStep('closed'); setPdfError(''); setMode('menu'); }}
+              style={{ marginTop: 16, width: "100%", padding: "10px", borderRadius: 8, border: "1px solid #ccc", background: "#fff" }}
+            >
+              {t.back}
+            </button>
+          </div>
+        </div>
+      )}
+
       {mode === 'counseling' && (
         <div style={{
           position: "absolute", top: 12, left: 12, right: 12,
@@ -1664,6 +1768,12 @@ export default function FortunePage() {
                   </button>
                 );
               })}
+              <button
+                onClick={() => { setOccultType('yearly_pdf'); setOccultInput(''); setOccultResultText(''); setOccultStep('input'); }}
+                style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #ddd", background: "#f3ecff", textAlign: "left" }}
+              >
+                {t.occultYearlyPdf}（{currency === 'jpy' ? '¥3,000' : '$20'}）
+              </button>
             </div>
             <button
               onClick={() => setOccultStep('closed')}
@@ -1701,11 +1811,20 @@ export default function FortunePage() {
               />
             )}
             <button
-              onClick={handleUnlockOccult}
+              onClick={() => {
+                if (occultType === 'yearly_pdf') {
+                  setOccultStep('closed');
+                  handleUnlockPdf('occult_yearly', { birthdate: occultInput }, t.occultYearlyPdf, 3000, 20);
+                } else {
+                  handleUnlockOccult();
+                }
+              }}
               disabled={occultType !== 'tarot' && !occultInput}
               style={{ width: "100%", padding: 12, borderRadius: 8, border: "none", background: "#7c4dff", color: "#fff", fontWeight: "bold", opacity: (occultType !== 'tarot' && !occultInput) ? 0.5 : 1 }}
             >
-              {t.occultSubmit}（{currency === 'jpy' ? '¥100' : '$1'}）
+              {occultType === 'yearly_pdf'
+                ? `${t.occultSubmit}（${currency === 'jpy' ? '¥3,000' : '$20'}）`
+                : `${t.occultSubmit}（${currency === 'jpy' ? '¥100' : '$1'}）`}
             </button>
             <button
               onClick={() => setOccultStep('select')}
@@ -1723,6 +1842,7 @@ export default function FortunePage() {
           numerology: t.occultNumerology,
           four_pillars: t.occultFourPillars,
           tarot: t.occultTarot,
+          yearly_pdf: t.occultYearlyPdf,
         }[occultType];
         return (
         <div style={{
@@ -1847,6 +1967,19 @@ export default function FortunePage() {
             )}
 
             <button
+              onClick={() => {
+                const scoresText = (Object.keys(personalityScores) as Trait[])
+                  .map((k) => `${t.traitLabels[k]}:${personalityScores[k]}%`)
+                  .join('、');
+                const bars = (Object.keys(personalityScores) as Trait[]).map((k) => ({ label: t.traitLabels[k], value: personalityScores[k] }));
+                handleUnlockPdf('trisetsu_darkside', { scoresText, bars }, t.trisetsuPdfButton, 2000, 13);
+              }}
+              style={{ marginTop: 12, width: "100%", padding: "12px", borderRadius: 8, border: "none", background: "#f3ecff", color: "#3b0764", fontWeight: "bold" }}
+            >
+              {t.trisetsuPdfButton}（{currency === 'jpy' ? '¥2,000' : '$13'}）
+            </button>
+
+            <button
               onClick={() => { setMode('menu'); setPersonalityAnswers([]); setPersonalityScores(null); setPersonalityUnlocked(false); setPersonalityResultText(''); }}
               style={{ marginTop: 16, width: "100%", padding: "10px", borderRadius: 8, border: "1px solid #ccc", background: "#fff" }}
             >
@@ -1878,6 +2011,14 @@ export default function FortunePage() {
               style={{ ...menuButtonStyle, padding: "10px 16px", fontSize: 14, alignSelf: "center", background: "#ffd54f" }}
             >
               🔮 {t.detailLabel[mode as DetailKind]}（{DETAIL_PRICING[mode as DetailKind][currency].display}）
+            </button>
+          )}
+          {mode === 'travel' && messages.some(m => m.role === 'ai') && (
+            <button
+              onClick={() => handleUnlockPdf('travel_plan', { request: lastQuestionRef.current }, t.travelPdfButton, 1000, 7)}
+              style={{ ...menuButtonStyle, padding: "10px 16px", fontSize: 14, alignSelf: "center", background: "#f3ecff" }}
+            >
+              {t.travelPdfButton}（{currency === 'jpy' ? '¥1,000' : '$7'}）
             </button>
           )}
           <div style={{ display: "flex", gap: 8 }}>
