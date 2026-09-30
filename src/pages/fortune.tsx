@@ -389,6 +389,9 @@ const UI: Record<Lang, {
   toneSelectTitle: string;
   toneNormal: string;
   toneSpicy: string;
+  personalityIntroTitle: string;
+  personalityIntroBody: string;
+  personalityIntroStart: string;
   travelPdfButton: string;
   trisetsuPdfButton: string;
   pdfGenerating: string;
@@ -451,6 +454,9 @@ const UI: Record<Lang, {
     toneSelectTitle: 'どんな口調で話してもらいますか？',
     toneNormal: '😊 いつも通り（優しい）',
     toneSpicy: '🔥 激辛モード（辛口）',
+    personalityIntroTitle: '🧩 15の質問であなたを診断します',
+    personalityIntroBody: '5段階で答えるだけの簡単な15問。\n外向性・協調性・誠実性・情緒安定性・開放性の5つのタイプが分かります。\n\nさらに、答え終わった後には——\n📖 あなただけの「取扱説明書」\n🌑 あなたの「性格の闇（ダークサイド）」診断\nも、PDFで受け取れます。',
+    personalityIntroStart: 'はじめる',
     travelPdfButton: '📄 観光プランをPDFで保存',
     trisetsuPdfButton: '📖 取説・ダークサイド診断PDF',
     pdfGenerating: 'PDFを作成しています…少々お待ちください',
@@ -542,6 +548,9 @@ const UI: Record<Lang, {
     toneSelectTitle: 'How would you like them to speak?',
     toneNormal: '😊 Normal (Gentle)',
     toneSpicy: '🔥 Spicy Mode (Harsh)',
+    personalityIntroTitle: '🧩 Discover yourself in 15 questions',
+    personalityIntroBody: "Just 15 quick questions on a 5-point scale.\nYou'll learn your Extraversion, Agreeableness, Conscientiousness, Emotional Stability, and Openness.\n\nAnd once you're done——\n📖 Your very own \"Instruction Manual\"\n🌑 Your \"Dark Side\" diagnosis\nare also available as a PDF.",
+    personalityIntroStart: 'Start',
     travelPdfButton: '📄 Save travel plan as PDF',
     trisetsuPdfButton: '📖 Instruction Manual & Dark Side PDF',
     pdfGenerating: 'Creating your PDF… please wait',
@@ -632,6 +641,9 @@ const UI: Record<Lang, {
     toneSelectTitle: '希望以什么样的语气和你说话？',
     toneNormal: '😊 一如既往（温柔）',
     toneSpicy: '🔥 辣评模式（毒舌）',
+    personalityIntroTitle: '🧩 15个问题，测出真实的你',
+    personalityIntroBody: '只需用5个等级回答15个简单问题。\n即可了解你的外向性、亲和性、尽责性、情绪稳定性和开放性。\n\n答完之后——\n📖 专属于你的「使用说明书」\n🌑 你的「性格暗黑面」诊断\n还可以获取PDF版本哦。',
+    personalityIntroStart: '开始',
     travelPdfButton: '📄 保存观光行程PDF',
     trisetsuPdfButton: '📖 使用说明书・暗黑面诊断PDF',
     pdfGenerating: '正在生成PDF，请稍候…',
@@ -721,6 +733,9 @@ const UI: Record<Lang, {
     toneSelectTitle: 'Ingin berbicara dengan gaya seperti apa?',
     toneNormal: '😊 Biasa (Lembut)',
     toneSpicy: '🔥 Mode Pedas (Ketus)',
+    personalityIntroTitle: '🧩 Kenali dirimu lewat 15 pertanyaan',
+    personalityIntroBody: 'Cukup jawab 15 pertanyaan singkat dengan skala 5 tingkat.\nKamu akan mengetahui tingkat Ekstraversi, Keramahan, Kehati-hatian, Stabilitas Emosi, dan Keterbukaanmu.\n\nDan setelah selesai——\n📖 \"Buku Panduan\" dirimu sendiri\n🌑 Diagnosis \"Sisi Gelap\" dirimu\njuga bisa didapatkan dalam bentuk PDF.',
+    personalityIntroStart: 'Mulai',
     travelPdfButton: '📄 Simpan rencana wisata sebagai PDF',
     trisetsuPdfButton: '📖 PDF Buku Panduan & Sisi Gelap',
     pdfGenerating: 'Membuat PDF… mohon tunggu',
@@ -810,6 +825,9 @@ const UI: Record<Lang, {
     toneSelectTitle: '¿Con qué tono te gustaría que hable?',
     toneNormal: '😊 Normal (Amable)',
     toneSpicy: '🔥 Modo Picante (Duro)',
+    personalityIntroTitle: '🧩 Descúbrete en 15 preguntas',
+    personalityIntroBody: 'Solo 15 preguntas rápidas en una escala de 5 niveles.\nConocerás tu Extraversión, Amabilidad, Responsabilidad, Estabilidad Emocional y Apertura.\n\nY una vez termines——\n📖 Tu propio \"Manual de Instrucciones\"\n🌑 Tu diagnóstico de \"Lado Oscuro\"\ntambién estarán disponibles en PDF.',
+    personalityIntroStart: 'Comenzar',
     travelPdfButton: '📄 Guardar plan de viaje en PDF',
     trisetsuPdfButton: '📖 PDF de Manual e Lado Oscuro',
     pdfGenerating: 'Creando tu PDF… espera un momento',
@@ -987,6 +1005,7 @@ export default function FortunePage() {
   const [premiumLoading, setPremiumLoading] = useState(false);
   const [premiumError, setPremiumError] = useState('');
   const [showPremiumThanks, setShowPremiumThanks] = useState(false);
+  const [showPersonalityIntro, setShowPersonalityIntro] = useState(false);
   const [personalityAnswers, setPersonalityAnswers] = useState<number[]>([]);
   const [personalityScores, setPersonalityScores] = useState<Record<Trait, number> | null>(null);
   const [personalityUnlocked, setPersonalityUnlocked] = useState(false);
@@ -1594,6 +1613,42 @@ export default function FortunePage() {
         </div>
       )}
 
+      {showPersonalityIntro && (
+        <div style={{
+          position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.8)",
+          padding: 24, zIndex: 60,
+        }}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 24, width: "90%", maxWidth: 400 }}>
+            <div style={{ fontSize: 17, fontWeight: "bold", marginBottom: 12, textAlign: "center" }}>
+              {t.personalityIntroTitle}
+            </div>
+            <div style={{ fontSize: 14, lineHeight: 1.7, marginBottom: 20, whiteSpace: "pre-wrap" }}>
+              {t.personalityIntroBody}
+            </div>
+            <button
+              onClick={() => {
+                setShowPersonalityIntro(false);
+                setPersonalityAnswers([]);
+                setPersonalityScores(null);
+                setPersonalityUnlocked(false);
+                setPersonalityResultText('');
+                setMode('personality');
+              }}
+              style={{ width: "100%", padding: 12, borderRadius: 8, border: "none", background: "#7c4dff", color: "#fff", fontWeight: "bold", marginBottom: 8 }}
+            >
+              {t.personalityIntroStart}
+            </button>
+            <button
+              onClick={() => setShowPersonalityIntro(false)}
+              style={{ width: "100%", padding: "10px", borderRadius: 8, border: "1px solid #ccc", background: "#fff" }}
+            >
+              {t.back}
+            </button>
+          </div>
+        </div>
+      )}
+
       {pendingCharacter && (
         <div style={{
           position: "absolute", inset: 0, display: "flex", flexDirection: "column",
@@ -1685,7 +1740,7 @@ export default function FortunePage() {
             {t.menuHeading}
           </div>
           <button onClick={() => setOccultStep('select')} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>{t.btnFortune}</button>
-          <button onClick={() => { setPersonalityAnswers([]); setPersonalityScores(null); setPersonalityUnlocked(false); setPersonalityResultText(''); setMode('personality'); }} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>{t.btnPersonality}</button>
+          <button onClick={() => setShowPersonalityIntro(true)} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>{t.btnPersonality}</button>
           <button onClick={() => startMode('travel')} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>{t.btnTravel}</button>
           <button onClick={() => startMode('counseling')} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>{t.btnCounseling}</button>
           <button onClick={() => setPendingFreeStart(true)} style={{ ...menuButtonStyle, pointerEvents: "auto" }}>{t.btnFree}</button>
