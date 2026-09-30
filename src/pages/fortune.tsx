@@ -386,6 +386,9 @@ const UI: Record<Lang, {
   subscribeFailed: string;
   occultYearlyPdf: string;
   tarotDeepPdf: string;
+  toneSelectTitle: string;
+  toneNormal: string;
+  toneSpicy: string;
   travelPdfButton: string;
   trisetsuPdfButton: string;
   pdfGenerating: string;
@@ -445,6 +448,9 @@ const UI: Record<Lang, {
     subscribeFailed: '登録画面を開けませんでした。時間をおいてもう一度お試しください。',
     occultYearlyPdf: '📜 年間鑑定書PDF',
     tarotDeepPdf: '🃏 タロット本格鑑定書PDF',
+    toneSelectTitle: 'どんな口調で話してもらいますか？',
+    toneNormal: '😊 いつも通り（優しい）',
+    toneSpicy: '🔥 激辛モード（辛口）',
     travelPdfButton: '📄 観光プランをPDFで保存',
     trisetsuPdfButton: '📖 取説・ダークサイド診断PDF',
     pdfGenerating: 'PDFを作成しています…少々お待ちください',
@@ -533,6 +539,9 @@ const UI: Record<Lang, {
     subscribeFailed: 'Could not open the checkout page. Please try again later.',
     occultYearlyPdf: '📜 Yearly Fortune Report (PDF)',
     tarotDeepPdf: '🃏 In-Depth Tarot Reading (PDF)',
+    toneSelectTitle: 'How would you like them to speak?',
+    toneNormal: '😊 Normal (Gentle)',
+    toneSpicy: '🔥 Spicy Mode (Harsh)',
     travelPdfButton: '📄 Save travel plan as PDF',
     trisetsuPdfButton: '📖 Instruction Manual & Dark Side PDF',
     pdfGenerating: 'Creating your PDF… please wait',
@@ -620,6 +629,9 @@ const UI: Record<Lang, {
     subscribeFailed: '无法打开付款页面，请稍后再试。',
     occultYearlyPdf: '📜 年度运势鉴定书PDF',
     tarotDeepPdf: '🃏 深度塔罗鉴定书PDF',
+    toneSelectTitle: '希望以什么样的语气和你说话？',
+    toneNormal: '😊 一如既往（温柔）',
+    toneSpicy: '🔥 辣评模式（毒舌）',
     travelPdfButton: '📄 保存观光行程PDF',
     trisetsuPdfButton: '📖 使用说明书・暗黑面诊断PDF',
     pdfGenerating: '正在生成PDF，请稍候…',
@@ -706,6 +718,9 @@ const UI: Record<Lang, {
     subscribeFailed: 'Tidak dapat membuka halaman pembayaran. Silakan coba lagi nanti.',
     occultYearlyPdf: '📜 Laporan Ramalan Tahunan (PDF)',
     tarotDeepPdf: '🃏 Pembacaan Tarot Mendalam (PDF)',
+    toneSelectTitle: 'Ingin berbicara dengan gaya seperti apa?',
+    toneNormal: '😊 Biasa (Lembut)',
+    toneSpicy: '🔥 Mode Pedas (Ketus)',
     travelPdfButton: '📄 Simpan rencana wisata sebagai PDF',
     trisetsuPdfButton: '📖 PDF Buku Panduan & Sisi Gelap',
     pdfGenerating: 'Membuat PDF… mohon tunggu',
@@ -792,6 +807,9 @@ const UI: Record<Lang, {
     subscribeFailed: 'No se pudo abrir la página de pago. Inténtalo de nuevo más tarde.',
     occultYearlyPdf: '📜 Informe de Fortuna Anual (PDF)',
     tarotDeepPdf: '🃏 Lectura Profunda de Tarot (PDF)',
+    toneSelectTitle: '¿Con qué tono te gustaría que hable?',
+    toneNormal: '😊 Normal (Amable)',
+    toneSpicy: '🔥 Modo Picante (Duro)',
     travelPdfButton: '📄 Guardar plan de viaje en PDF',
     trisetsuPdfButton: '📖 PDF de Manual e Lado Oscuro',
     pdfGenerating: 'Creando tu PDF… espera un momento',
@@ -941,6 +959,9 @@ export default function FortunePage() {
   const [mode, setMode] = useState<Mode>('menu');
   const [character, setCharacter] = useState<CharacterId | null>(null);
   const characterRef = useRef<CharacterId | null>(null); // 状態更新の反映待ちを避けるための参照
+  const [characterMode, setCharacterMode] = useState<'normal' | 'spicy'>('normal');
+  const characterModeRef = useRef<'normal' | 'spicy'>('normal');
+  const [pendingCharacter, setPendingCharacter] = useState<CharacterId | null>(null); // 口調選択待ちのキャラクター
   const talkStyleRef = useRef<string | null>(null); // 状態更新の反映待ちを避けるための参照
 
   // ブラウザの言語設定から、表示言語・通貨を自動判定する
@@ -1113,6 +1134,7 @@ export default function FortunePage() {
           character: characterRef.current,
           lang: langRef.current,
           talkStyle: currentMode === 'free' ? talkStyleRef.current : null,
+          characterMode: characterModeRef.current,
           email: typeof window !== 'undefined' ? localStorage.getItem('memberEmail') : null,
         }),
       });
@@ -1572,6 +1594,48 @@ export default function FortunePage() {
         </div>
       )}
 
+      {pendingCharacter && (
+        <div style={{
+          position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.8)",
+          padding: 24, zIndex: 60,
+        }}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 24, width: "90%", maxWidth: 380 }}>
+            <div style={{ fontSize: 16, fontWeight: "bold", marginBottom: 16, textAlign: "center" }}>
+              {t.toneSelectTitle}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <button
+                onClick={() => {
+                  characterModeRef.current = 'normal';
+                  setCharacterMode('normal');
+                  characterRef.current = pendingCharacter;
+                  setCharacter(pendingCharacter);
+                  setPendingCharacter(null);
+                  speak(t.greetingAfterCharacter);
+                }}
+                style={{ padding: "12px", borderRadius: 8, border: "1px solid #ddd", background: "#f9f9f9" }}
+              >
+                {t.toneNormal}
+              </button>
+              <button
+                onClick={() => {
+                  characterModeRef.current = 'spicy';
+                  setCharacterMode('spicy');
+                  characterRef.current = pendingCharacter;
+                  setCharacter(pendingCharacter);
+                  setPendingCharacter(null);
+                  speak(t.greetingAfterCharacter);
+                }}
+                style={{ padding: "12px", borderRadius: 8, border: "1px solid #ddd", background: "#fff0f0" }}
+              >
+                {t.toneSpicy}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {character === null && (
         <div style={{
           position: "absolute", inset: 0, display: "flex", flexDirection: "column",
@@ -1593,9 +1657,13 @@ export default function FortunePage() {
                 key={c.id}
                 onClick={async () => {
                   if (!audioUnlocked) await unlockAudio();
-                  characterRef.current = c.id;
-                  setCharacter(c.id);
-                  speak(t.greetingAfterCharacter);
+                  if (c.id === 'witch') {
+                    characterRef.current = c.id;
+                    setCharacter(c.id);
+                    speak(t.greetingAfterCharacter);
+                  } else {
+                    setPendingCharacter(c.id); // 女性・男性は口調選択を挟む
+                  }
                 }}
                 style={{ ...menuButtonStyle, display: "flex", flexDirection: "column", alignItems: "center", padding: "16px 20px" }}
               >

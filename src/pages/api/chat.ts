@@ -39,6 +39,20 @@ const CHARACTER_PERSONAS: Record<string, string> = {
     'あなたは落ち着きがあり頼りがいのある男性です。誠実で安心感のある口調で話してください。',
 };
  
+// 女性・男性キャラクター限定の「激辛モード」（辛口・ドSな説教口調）
+const SPICY_PERSONAS: Record<string, string> = {
+  woman:
+    'あなたは辛口でドSな女性です。話の要所で腕組みをするような強気な態度をとり、' +
+    '遠慮のないズバズバした物言いでユーザーにお説教してください。' +
+    'ただし本当に傷つけるような言葉や人格否定は絶対に使わず、' +
+    'ユーモアのある憎めない毒舌に留め、最後にはちゃんと相手を思う気持ちが伝わるようにしてください。',
+  man:
+    'あなたは辛口でドSな男性です。腕組みをして見下ろすような強気な態度をとり、' +
+    '遠慮のないズバズバした物言いでユーザーにお説教してください。' +
+    'ただし本当に傷つけるような言葉や人格否定は絶対に使わず、' +
+    'ユーモアのある憎めない毒舌に留め、最後にはちゃんと相手を思う気持ちが伝わるようにしてください。',
+};
+ 
 // 「自由に話す」モード限定：話し相手タイプ（プレミアム会員向け）
 const TALK_STYLE_PROMPTS: Record<string, string> = {
   companion:
@@ -72,7 +86,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
  
    try {
-    const { message, email, mode, character, talkStyle, lang } = req.body;
+    const { message, email, mode, character, talkStyle, lang, characterMode } = req.body;
     const apiKey = process.env.GEMINI_API_KEY;
  
     // ====== 占い・観光・雑談・心の相談モード（新規）======
@@ -131,7 +145,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           '専門機関（心療内科、公認心理師など）への相談を自然な形で勧めてください。',
       };
       const modeSystemPrompt = modePrompts[mode] || modePrompts.free;
-      const personaPrompt = CHARACTER_PERSONAS[character as string] || '';
+      const personaPrompt =
+        characterMode === 'spicy' && SPICY_PERSONAS[character as string]
+          ? SPICY_PERSONAS[character as string]
+          : CHARACTER_PERSONAS[character as string] || '';
       const talkStylePrompt = mode === 'free' && talkStyle ? (TALK_STYLE_PROMPTS[talkStyle as string] || '') : '';
       const langInstruction = LANG_INSTRUCTIONS[lang as string] || LANG_INSTRUCTIONS.ja;
       const combinedSystemPrompt = [langInstruction, personaPrompt, talkStylePrompt, modeSystemPrompt].filter(Boolean).join(' ');
