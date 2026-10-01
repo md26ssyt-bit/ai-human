@@ -1000,6 +1000,9 @@ export default function FortunePage() {
   const lastQuestionRef = useRef<string>(''); // 詳細版購入時、直前の質問を引き継ぐため
   const [detailUnlocked, setDetailUnlocked] = useState<Set<DetailKind>>(new Set());
   const [showDetailReveal, setShowDetailReveal] = useState(false); // Stripeから戻ってきた直後の「タップして聞く」画面
+  const [pendingDetailReply, setPendingDetailReply] = useState('');
+  const [pendingDetailKind, setPendingDetailKind] = useState<DetailKind | null>(null);
+  const [purchaseError, setPurchaseError] = useState(''); // 決済確認に失敗した場合のエラー文言
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [premiumEmail, setPremiumEmail] = useState('');
   const [premiumLoading, setPremiumLoading] = useState(false);
@@ -1260,204 +1263,148 @@ export default function FortunePage() {
     setAudioUnlocked(true);
   };
 
-  // 詳細版をStripeで購入する（占い・観光どちらでも使える汎用版、言語に応じて円/ドルを切り替え）
+  // 詳細版をStripeで購入する（占い・観光どちらでも使える汎用版、価格はサーバー側の定義だけを信用する）
   const handleUnlockDetail = async (kind: DetailKind) => {
-    const price = DETAIL_PRICING[kind][currency];
-    // 決済から戻ってきた後も内容を引き継げるよう保存しておく
-    localStorage.setItem('pendingDetail', JSON.stringify({
-      kind,
-      character: characterRef.current,
-      question: lastQuestionRef.current,
-      lang,
-    }));
-    const res = await fetch('/api/create-payment-link', {
+    const res = await fetch('/api/create-product-checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        amount: price.amount,
-        currency,
-        description: `${CHARACTERS.find(c => c.id === character)?.label || ''} - ${t.detailLabel[kind]}`,
-        successUrl: `${window.location.origin}/fortune?unlocked=1`,
+        productKey: `${kind}_detail`,
+        payload: { question: lastQuestionRef.current },
+        character: characterRef.current,
+        lang,
       }),
     });
     const data = await res.json();
     if (data.url) window.location.href = data.url;
   };
 
-  // Stripeの決済から戻ってきたかどうかを確認する
+  // Stripeの決済から戻ってきたかどうかを確認する。
+  // ここが今回のセキュリティ修正の要：内容は一切ブラウザ側に持たせず、
+  // 必ずStripeのsession_idをサーバーに送って「本当に支払われたか」を確認してから
+  // サーバー側でコンテンツを生成してもらう。
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
-    if (params.get('unlocked') === '1') {
-      setShowDetailReveal(true);
-    }
+    const sessionId = params.get('session_id');
+
     if (params.get('subscribed') === '1') {
       setShowPremiumThanks(true);
     }
-    if (params.get('personality_unlocked') === '1') {
-      const saved = localStorage.getItem('pendingPersonality');
-      if (saved) {
-        const pending = JSON.parse(saved);
-        setPersonalityScores(pending.scores);
-        setPersonalityUnlocked(true);
-        setMode('personality');
-        if (pending.lang) { setLang(pending.lang); langRef.current = pending.lang; }
-        characterRef.current = pending.character || 'woman';
-        setCharacter(pending.character || 'woman');
-        localStorage.removeItem('pendingPersonality');
-      }
-    }
-    if (params.get('occult_unlocked') === '1') {
-      const saved = localStorage.getItem('pendingOccult');
-      if (saved) {
-        const pending = JSON.parse(saved);
-        setOccultType(pending.occultType);
-        setOccultInput(pending.occultInput);
-        setOccultStep('result');
-        if (pending.lang) { setLang(pending.lang); langRef.current = pending.lang; }
-        characterRef.current = pending.character || 'woman';
-        setCharacter(pending.character || 'woman');
-        localStorage.removeItem('pendingOccult');
-      }
-    }
-    if (params.get('pdf_unlocked') === '1') {
-      const saved = localStorage.getItem('pendingPdf');
-      if (saved) {
-        const pending = JSON.parse(saved);
-        if (pending.lang) { setLang(pending.lang); langRef.current = pending.lang; }
-        characterRef.current = pending.character || 'woman';
-        setCharacter(pending.character || 'woman');
-        setPdfLoading(true);
-        setPdfStep('result');
-        localStorage.removeItem('pendingPdf');
-        (async () => {
-          try {
-            const res = await fetch('/api/generate-report-pdf', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ reportType: pending.reportType, payload: pending.payload, lang: pending.lang }),
-            });
-            if (!res.ok) throw new Error('failed');
-            const blob = await res.blob();
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `adikio-${pending.reportType}.pdf`;
-            a.click();
-            URL.revokeObjectURL(url);
-            setPdfError('');
-          } catch {
-            setPdfError((UI[(pending.lang as Lang) || 'ja']).pdfFailed);
-          } finally {
-            setPdfLoading(false);
+
+    if (params.get('paid_content') === '1' && sessionId) {
+      (async () => {
+        try {
+          const res = await fetch('/api/fulfill-purchase', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId }),
+          });
+          if (!res.ok) throw new Error('failed');
+          const data = await res.json();
+          const productKey: string = data.productKey;
+          const resultLang = (data.lang || 'ja') as Lang;
+          setLang(resultLang);
+          langRef.current = resultLang;
+          characterRef.current = data.character || 'woman';
+          setCharacter(data.character || 'woman');
+
+          if (productKey === 'fortune_detail' || productKey === 'travel_detail') {
+            const kind = productKey.replace('_detail', '') as DetailKind;
+            setPendingDetailKind(kind);
+            setPendingDetailReply(data.reply || '');
+            setShowDetailReveal(true);
+          } else if (productKey === 'personality_detail') {
+            setPersonalityResultText(data.reply || '');
+            setPersonalityUnlocked(true);
+            setMode('personality');
+            const cachedScores = localStorage.getItem('personalityScoresCache');
+            if (cachedScores) setPersonalityScores(JSON.parse(cachedScores));
+          } else {
+            // astrology / numerology / four_pillars / tarot
+            setOccultType(productKey as any);
+            setOccultResultText(data.reply || '');
+            setOccultStep('result');
           }
-        })();
-      }
+        } catch {
+          setPurchaseError(UI[(lang || 'ja') as Lang].pdfFailed);
+        }
+      })();
+    }
+
+    if (params.get('pdf_unlocked') === '1' && sessionId) {
+      setPdfLoading(true);
+      setPdfStep('result');
+      (async () => {
+        try {
+          const res = await fetch('/api/generate-report-pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId }),
+          });
+          if (!res.ok) throw new Error('failed');
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `adikio-report.pdf`;
+          a.click();
+          URL.revokeObjectURL(url);
+          setPdfError('');
+        } catch {
+          setPdfError(UI['ja'].pdfFailed);
+        } finally {
+          setPdfLoading(false);
+        }
+      })();
     }
   }, []);
 
-  const OCCULT_LABELS: Record<string, string> = {
-    astrology: '西洋占星術', numerology: '数秘術', four_pillars: '四柱推命', tarot: 'タロット', yearly_pdf: '年間鑑定書PDF', tarot_deep: 'タロット本格鑑定書PDF',
-  };
-
-  // PDFレポートを¥100以外の金額で解放する（年間鑑定書・観光プラン・トリセツ診断）
-  const handleUnlockPdf = async (reportType: string, payload: any, description: string, amountJpy: number, amountUsd: number) => {
-    localStorage.setItem('pendingPdf', JSON.stringify({ reportType, payload, character: characterRef.current, lang }));
-    const res = await fetch('/api/create-payment-link', {
+  // PDFレポートを申し込む（価格はサーバー側の定義だけを信用する。reportType=商品キー）
+  const handleUnlockPdf = async (reportType: string, payload: any) => {
+    const res = await fetch('/api/create-product-checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        amount: currency === 'jpy' ? amountJpy : amountUsd,
-        currency,
-        description,
-        successUrl: `${window.location.origin}/fortune?pdf_unlocked=1`,
-      }),
+      body: JSON.stringify({ productKey: reportType, payload, character: characterRef.current, lang }),
     });
     const data = await res.json();
     if (data.url) window.location.href = data.url;
   };
 
-  // 占術の結果を¥100で解放する
+  // 占術の鑑定を申し込む
   const handleUnlockOccult = async () => {
     if (!occultType) return;
-    localStorage.setItem('pendingOccult', JSON.stringify({
-      occultType, occultInput, character: characterRef.current, lang,
-    }));
-    const res = await fetch('/api/create-payment-link', {
+    const res = await fetch('/api/create-product-checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        amount: currency === 'jpy' ? 100 : 1,
-        currency,
-        description: OCCULT_LABELS[occultType] || '占術鑑定',
-        successUrl: `${window.location.origin}/fortune?occult_unlocked=1`,
+        productKey: occultType,
+        payload: occultType === 'tarot' ? { concern: occultInput } : { birthdate: occultInput },
+        character: characterRef.current,
+        lang,
       }),
     });
     const data = await res.json();
     if (data.url) window.location.href = data.url;
   };
 
-  // 占術結果画面に入ったら、AIへ鑑定をリクエストする
-  useEffect(() => {
-    if (occultStep !== 'result' || !occultType || occultResultText) return;
-    (async () => {
-      const res2 = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: occultInput || '（特になし）',
-          mode: occultType,
-          character: characterRef.current,
-          lang: langRef.current,
-          email: typeof window !== 'undefined' ? localStorage.getItem('memberEmail') : null,
-        }),
-      });
-      const data2 = await res2.json();
-      setOccultResultText(data2.reply || '');
-    })();
-  }, [occultStep, occultType, occultInput, occultResultText]);
-
-  // 性格診断の結果を¥100で解放する
+  // 性格診断の詳細結果を申し込む（スコアは表示の再現用にのみローカル保存。採点生成には使わない）
   const handleUnlockPersonality = async (scores: Record<Trait, number>) => {
-    localStorage.setItem('pendingPersonality', JSON.stringify({
-      scores, character: characterRef.current, lang,
-    }));
-    const res = await fetch('/api/create-payment-link', {
+    localStorage.setItem('personalityScoresCache', JSON.stringify(scores));
+    const scoresText = (Object.keys(scores) as Trait[]).map((k) => `${t.traitLabels[k]}:${scores[k]}%`).join('、');
+    const res = await fetch('/api/create-product-checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        amount: currency === 'jpy' ? 100 : 1,
-        currency,
-        description: '性格診断（詳細結果）',
-        successUrl: `${window.location.origin}/fortune?personality_unlocked=1`,
+        productKey: 'personality_detail',
+        payload: { scoresText },
+        character: characterRef.current,
+        lang,
       }),
     });
     const data = await res.json();
     if (data.url) window.location.href = data.url;
   };
-
-  // 解放後、スコアをもとにAIへ詳細な解釈文を生成させる
-  useEffect(() => {
-    if (!personalityUnlocked || !personalityScores || personalityResultText) return;
-    const summary = (Object.keys(personalityScores) as Trait[])
-      .map((k) => `${t.traitLabels[k]}:${personalityScores[k]}%`)
-      .join('、');
-    (async () => {
-      const res2 = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: summary,
-          mode: 'personality_detail',
-          character: characterRef.current,
-          lang: langRef.current,
-          email: typeof window !== 'undefined' ? localStorage.getItem('memberEmail') : null,
-        }),
-      });
-      const data2 = await res2.json();
-      setPersonalityResultText(data2.reply || '');
-    })();
-  }, [personalityUnlocked, personalityScores, personalityResultText]);
 
   // プレミアムプラン登録：メールアドレスを送ってCheckout Sessionへ遷移
   const handleSubscribe = async () => {
@@ -1500,19 +1447,21 @@ export default function FortunePage() {
   };
 
   // 「タップして詳細版を聞く」を押した時の処理
+  // 内容はすでに決済確認後にサーバーから取得済み（pendingDetailReply）なので、ここでは表示するだけ
   const revealDetail = async () => {
-    const saved = localStorage.getItem('pendingDetail');
-    const pending = saved ? JSON.parse(saved) : { kind: 'fortune' as DetailKind, character: 'woman', question: '', lang: 'ja' as Lang };
-    const kind: DetailKind = pending.kind || 'fortune';
-    if (pending.lang) { setLang(pending.lang); langRef.current = pending.lang; }
-    characterRef.current = pending.character || 'woman';
-    setCharacter(pending.character || 'woman');
+    const kind: DetailKind = pendingDetailKind || 'fortune';
+    const reply = pendingDetailReply || '';
     setMode(kind);
     setDetailUnlocked(prev => new Set(prev).add(kind));
     setShowDetailReveal(false);
     if (!audioUnlocked) await unlockAudio();
-    sendMessage(pending.question || UI[(pending.lang || 'ja') as Lang].greetings[kind], `${kind}_detail` as Mode);
-    localStorage.removeItem('pendingDetail');
+    setMessages(prev => [...prev, { role: 'ai', text: reply }]);
+    const sentences = reply.split(/(?<=[。！？.!?])\s*/);
+    for (const s of sentences) {
+      if (s.trim()) speak(s.trim());
+    }
+    setPendingDetailReply('');
+    setPendingDetailKind(null);
   };
 
   const startMode = async (m: Mode) => {
@@ -1949,10 +1898,10 @@ export default function FortunePage() {
               onClick={() => {
                 if (occultType === 'yearly_pdf') {
                   setOccultStep('closed');
-                  handleUnlockPdf('occult_yearly', { birthdate: occultInput }, t.occultYearlyPdf, 3000, 20);
+                  handleUnlockPdf('occult_yearly', { birthdate: occultInput });
                 } else if (occultType === 'tarot_deep') {
                   setOccultStep('closed');
-                  handleUnlockPdf('tarot_deep', { concern: occultInput }, t.tarotDeepPdf, 2000, 13);
+                  handleUnlockPdf('tarot_deep', { concern: occultInput });
                 } else {
                   handleUnlockOccult();
                 }
@@ -2113,7 +2062,7 @@ export default function FortunePage() {
                   .map((k) => `${t.traitLabels[k]}:${personalityScores[k]}%`)
                   .join('、');
                 const bars = (Object.keys(personalityScores) as Trait[]).map((k) => ({ label: t.traitLabels[k], value: personalityScores[k] }));
-                handleUnlockPdf('trisetsu_darkside', { scoresText, bars }, t.trisetsuPdfButton, 2000, 13);
+                handleUnlockPdf('trisetsu_darkside', { scoresText, bars });
               }}
               style={{ marginTop: 12, width: "100%", padding: "12px", borderRadius: 8, border: "none", background: "#f3ecff", color: "#3b0764", fontWeight: "bold" }}
             >
@@ -2156,7 +2105,7 @@ export default function FortunePage() {
           )}
           {mode === 'travel' && messages.some(m => m.role === 'ai') && (
             <button
-              onClick={() => handleUnlockPdf('travel_plan', { request: lastQuestionRef.current }, t.travelPdfButton, 1000, 7)}
+              onClick={() => handleUnlockPdf('travel_plan', { request: lastQuestionRef.current })}
               style={{ ...menuButtonStyle, padding: "10px 16px", fontSize: 14, alignSelf: "center", background: "#f3ecff" }}
             >
               {t.travelPdfButton}（{currency === 'jpy' ? '¥1,000' : '$7'}）

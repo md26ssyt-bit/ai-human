@@ -87,6 +87,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
  
    try {
     const { message, email, mode, character, talkStyle, lang, characterMode } = req.body;
+ 
+    // 占術・性格診断詳細・占い/観光の詳細版は有料コンテンツなので、
+    // 決済確認を行わないこのエンドポイントからの直接生成は許可しない
+    // （正しい入口は /api/create-product-checkout → 決済 → /api/fulfill-purchase）
+    const PAID_ONLY_MODES = new Set([
+      'fortune_detail', 'travel_detail', 'astrology', 'numerology', 'four_pillars', 'tarot', 'personality_detail',
+    ]);
+    if (PAID_ONLY_MODES.has(mode)) {
+      return res.status(403).json({ error: 'この内容は決済が必要です' });
+    }
     const apiKey = process.env.GEMINI_API_KEY;
  
     // ====== 占い・観光・雑談・心の相談モード（新規）======
