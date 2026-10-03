@@ -52,8 +52,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       mode: 'subscription',
       customer: customer.id,
       line_items: [{ price: PREMIUM_PRICE_ID, quantity: 1 }],
-      success_url: `${baseUrl}/fortune?subscribed=1`,
-      cancel_url: `${baseUrl}/fortune?subscribed=0`,
+      success_url: `${baseUrl}/room?subscribed=1`,
+      cancel_url: `${baseUrl}/room?subscribed=0`,
       locale: CHECKOUT_LOCALES[lang as string] || 'ja',
     });
  

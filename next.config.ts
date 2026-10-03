@@ -1,5 +1,5 @@
 import type { NextConfig } from "next";
-
+ 
 const nextConfig: NextConfig = {
   /* config options here */
   reactStrictMode: true,
@@ -10,8 +10,13 @@ const nextConfig: NextConfig = {
         destination: "/",
         permanent: true,
       },
+      {
+        source: "/fortune",
+        destination: "/room",
+        permanent: true,
+      },
     ];
   },
 };
-
+ 
 export default nextConfig;

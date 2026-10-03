@@ -101,7 +101,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     const dateStr = new Date().toLocaleDateString(lang === 'ja' ? 'ja-JP' : 'en-US');
     cover.drawText(dateStr, { x: MARGIN, y: 90, size: 12, font, color: rgb(0.8, 0.75, 0.9) });
-    cover.drawText('adikio.com/fortune', { x: MARGIN, y: 70, size: 11, font, color: rgb(0.7, 0.65, 0.85) });
+    cover.drawText('adikio.com/room', { x: MARGIN, y: 70, size: 11, font, color: rgb(0.7, 0.65, 0.85) });
  
     // ---- トリセツ・ダークサイドのみ：スコアのバー図解ページ ----
     if (reportType === 'trisetsu_darkside' && payload?.bars) {

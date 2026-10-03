@@ -41,8 +41,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           quantity: 1,
         },
       ],
-      success_url: `${baseUrl}/fortune?${returnParam}=1&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/fortune?${returnParam}=0`,
+      success_url: `${baseUrl}/room?${returnParam}=1&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/room?${returnParam}=0`,
       metadata: {
         productKey,
         payload: JSON.stringify(payload || {}).slice(0, 480),
@@ -57,4 +57,3 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: '決済ページの作成に失敗しました' });
   }
 }
- 
