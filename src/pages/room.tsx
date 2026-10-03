@@ -241,15 +241,18 @@ async function saveShareImage(blob: Blob, filename: string) {
 // ======================
 // Avatar（kiosk.tsxからそのまま流用）
 // ======================
-function Avatar({ vrmUrl, emotion = 'neutral', avatarY = -1.6 }: { vrmUrl: string, emotion?: string, avatarY?: number }) {
+function Avatar({ vrmUrl, emotion = 'neutral', avatarY = -1.6, armsCrossed = false }: { vrmUrl: string, emotion?: string, avatarY?: number, armsCrossed?: boolean }) {
   const mouthState = useRef({ speaking: false, value: 0, volume: 0, inhale: false, blinkAfter: false });
   const [vrm, setVrm] = useState<VRM | null>(null);
   const [loading, setLoading] = useState(true);
   const blinkState = useRef({ timer: 0, nextBlink: 3, value: 0 });
+  // 腕組みの度合い（0=通常、1=腕組み）。毎フレーム目標値へ近づけて滑らかに切り替える
+  const armBlend = useRef(0);
 
   useEffect(() => {
     if (!vrmUrl) return;
     setLoading(true);
+    armBlend.current = 0;
     const loader = new GLTFLoader();
     loader.register((parser) => new VRMLoaderPlugin(parser));
     loader.load(vrmUrl, (gltf) => {
@@ -296,6 +299,11 @@ function Avatar({ vrmUrl, emotion = 'neutral', avatarY = -1.6 }: { vrmUrl: strin
     }
     vrm.update(delta);
 
+    // 腕組みの度合いを目標値（0 or 1）へ滑らかに近づける
+    const target = armsCrossed ? 1 : 0;
+    armBlend.current += (target - armBlend.current) * Math.min(1, delta * 4);
+    const b = armBlend.current;
+
     const leftUpperArm = vrm.humanoid?.getRawBoneNode("leftUpperArm");
     const rightUpperArm = vrm.humanoid?.getRawBoneNode("rightUpperArm");
     const leftLowerArm = vrm.humanoid?.getRawBoneNode("leftLowerArm");
@@ -303,12 +311,30 @@ function Avatar({ vrmUrl, emotion = 'neutral', avatarY = -1.6 }: { vrmUrl: strin
     const leftHand = vrm.humanoid?.getRawBoneNode("leftHand");
     const rightHand = vrm.humanoid?.getRawBoneNode("rightHand");
     if (leftUpperArm && rightUpperArm && leftLowerArm && rightLowerArm && leftHand && rightHand) {
-      leftUpperArm.rotation.x = -0.25; rightUpperArm.rotation.x = -0.25;
-      leftUpperArm.rotation.y = -1.8; rightUpperArm.rotation.y = 1.4;
-      leftUpperArm.rotation.z = -1.1; rightUpperArm.rotation.z = 1.1;
-      leftLowerArm.rotation.x = -1.0; rightLowerArm.rotation.x = -1.0;
-      leftLowerArm.rotation.z = -0.2; rightLowerArm.rotation.z = 0.2;
-      leftHand.rotation.x = 0.5; rightHand.rotation.x = 0.5;
+      // 通常ポーズ（腕を体の横に自然に下ろす）
+      const idle = {
+        lUx: 0, rUx: 0, lUy: 0, rUy: 0, lUz: -1.2, rUz: 1.2,
+        lLx: 0, rLx: 0, lLz: 0, rLz: 0, lHx: 0, rHx: 0,
+      };
+      // 腕組みポーズ（これまで固定で使っていた値）
+      const crossed = {
+        lUx: -0.25, rUx: -0.25, lUy: -1.8, rUy: 1.4, lUz: -1.1, rUz: 1.1,
+        lLx: -1.0, rLx: -1.0, lLz: -0.2, rLz: 0.2, lHx: 0.5, rHx: 0.5,
+      };
+      const mix = (a: number, c: number) => a + (c - a) * b;
+
+      leftUpperArm.rotation.x = mix(idle.lUx, crossed.lUx);
+      rightUpperArm.rotation.x = mix(idle.rUx, crossed.rUx);
+      leftUpperArm.rotation.y = mix(idle.lUy, crossed.lUy);
+      rightUpperArm.rotation.y = mix(idle.rUy, crossed.rUy);
+      leftUpperArm.rotation.z = mix(idle.lUz, crossed.lUz);
+      rightUpperArm.rotation.z = mix(idle.rUz, crossed.rUz);
+      leftLowerArm.rotation.x = mix(idle.lLx, crossed.lLx);
+      rightLowerArm.rotation.x = mix(idle.rLx, crossed.rLx);
+      leftLowerArm.rotation.z = mix(idle.lLz, crossed.lLz);
+      rightLowerArm.rotation.z = mix(idle.rLz, crossed.rLz);
+      leftHand.rotation.x = mix(idle.lHx, crossed.lHx);
+      rightHand.rotation.x = mix(idle.rHx, crossed.rHx);
     }
   });
 
@@ -1494,7 +1520,7 @@ export default function FortunePage() {
           <ResponsiveCamera baseFov={camSettings.fov} baseZ={camSettings.camZ} baseY={camSettings.camY} targetY={camSettings.targetY} />
           <ambientLight intensity={0.7} />
           <directionalLight position={[1, 2, 3]} />
-          <Avatar vrmUrl={CHARACTERS.find(c => c.id === character)?.vrmUrl || '/avatar.vrm'} emotion={emotion} avatarY={camSettings.avatarY} />
+          <Avatar vrmUrl={CHARACTERS.find(c => c.id === character)?.vrmUrl || '/avatar.vrm'} emotion={emotion} avatarY={camSettings.avatarY} armsCrossed={characterMode === 'spicy'} />
           <OrbitControls target={[0, camSettings.targetY, 0]} enableZoom={false} />
         </Canvas>
       </div>
