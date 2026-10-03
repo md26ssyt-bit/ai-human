@@ -314,12 +314,14 @@ function Avatar({ vrmUrl, emotion = 'neutral', avatarY = -1.6, armsCrossed = fal
       // 通常ポーズ（腕を体の横に自然に下ろす）
       const idle = {
         lUx: 0, rUx: 0, lUy: 0, rUy: 0, lUz: -1.2, rUz: 1.2,
-        lLx: 0, rLx: 0, lLz: 0, rLz: 0, lHx: 0, rHx: 0,
+        lLy: 0, rLy: 0, lHx: 0, rHx: 0,
       };
-      // 腕組みポーズ（これまで固定で使っていた値）
+      // 腕組みポーズ
+      // Ux：上腕を前へ出す（負の値ほど前）  Uy：前腕を体の内側へ向ける（左は負、右は正）
+      // Uz：腕を下ろす角度  Ly：肘の曲げ（左は負、右は正。絶対値が大きいほど深く曲がる）
       const crossed = {
-        lUx: -0.25, rUx: -0.25, lUy: -1.8, rUy: 1.4, lUz: -1.1, rUz: 1.1,
-        lLx: -1.0, rLx: -1.0, lLz: -0.2, rLz: 0.2, lHx: 0.5, rHx: 0.5,
+        lUx: -0.6, rUx: -0.35, lUy: -1.0, rUy: 1.0, lUz: -1.2, rUz: 1.2,
+        lLy: -2.1, rLy: 2.0, lHx: 0, rHx: 0,
       };
       const mix = (a: number, c: number) => a + (c - a) * b;
 
@@ -329,10 +331,12 @@ function Avatar({ vrmUrl, emotion = 'neutral', avatarY = -1.6, armsCrossed = fal
       rightUpperArm.rotation.y = mix(idle.rUy, crossed.rUy);
       leftUpperArm.rotation.z = mix(idle.lUz, crossed.lUz);
       rightUpperArm.rotation.z = mix(idle.rUz, crossed.rUz);
-      leftLowerArm.rotation.x = mix(idle.lLx, crossed.lLx);
-      rightLowerArm.rotation.x = mix(idle.rLx, crossed.rLx);
-      leftLowerArm.rotation.z = mix(idle.lLz, crossed.lLz);
-      rightLowerArm.rotation.z = mix(idle.rLz, crossed.rLz);
+      leftLowerArm.rotation.x = 0;
+      rightLowerArm.rotation.x = 0;
+      leftLowerArm.rotation.y = mix(idle.lLy, crossed.lLy);
+      rightLowerArm.rotation.y = mix(idle.rLy, crossed.rLy);
+      leftLowerArm.rotation.z = 0;
+      rightLowerArm.rotation.z = 0;
       leftHand.rotation.x = mix(idle.lHx, crossed.lHx);
       rightHand.rotation.x = mix(idle.rHx, crossed.rHx);
     }
@@ -346,7 +350,6 @@ function Avatar({ vrmUrl, emotion = 'neutral', avatarY = -1.6, armsCrossed = fal
     </group>
   );
 }
-
 // ======================
 // 画面サイズ（アスペクト比）に応じてカメラを自動調整する
 // ======================
