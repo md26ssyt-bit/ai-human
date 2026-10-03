@@ -321,7 +321,7 @@ function Avatar({ vrmUrl, emotion = 'neutral', avatarY = -1.6, armsCrossed = fal
       // Uz：腕を下ろす角度  Ly：肘の曲げ（左は負、右は正。絶対値が大きいほど深く曲がる）
       const crossed = {
         lUx: -0.6, rUx: -0.35, lUy: -1.0, rUy: 1.0, lUz: -1.2, rUz: 1.2,
-        lLy: -2.1, rLy: 2.0, lHx: 0, rHx: 0,
+        lLy: -1.0, rLy: 1.3, lHx: 0, rHx: 0,
       };
       const mix = (a: number, c: number) => a + (c - a) * b;
 
