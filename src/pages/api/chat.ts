@@ -21,6 +21,11 @@ const FREE_LIMITS: Record<string, { group: string; limit: number }> = {
 };
  
 function getClientIp(req: NextApiRequest): string {
+  // Cloudflare経由の場合は、利用者本来のIPがこのヘッダーに入る
+  const cfIp = req.headers['cf-connecting-ip'];
+  if (typeof cfIp === 'string' && cfIp.length > 0) {
+    return cfIp.trim();
+  }
   const forwarded = req.headers['x-forwarded-for'];
   if (typeof forwarded === 'string' && forwarded.length > 0) {
     return forwarded.split(',')[0].trim();
