@@ -182,7 +182,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // 詳細版（fortune_detail/travel_detail）は購入済み扱いなので対象外
       const limitConfig = FREE_LIMITS[mode];
       if (limitConfig) {
-        // プレミアム会員は「メールアドレス単位」で1日300回、無料ユーザーは「IP単位」でモードごとの回数
+        // プレミアム会員は「メールアドレス単位」で1日200回、無料ユーザーは「IP単位」でモードごとの回数
         const identifier = isPremiumMember && memberEmail ? `premium:${memberEmail}` : getClientIp(req);
         const groupName = isPremiumMember ? 'premium_daily' : limitConfig.group;
         const limitCount = isPremiumMember ? 200 : limitConfig.limit;
