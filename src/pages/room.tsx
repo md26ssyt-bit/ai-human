@@ -998,7 +998,23 @@ const CRISIS_KEYWORDS = [
 function containsCrisisSignal(text: string): boolean {
   return CRISIS_KEYWORDS.some(kw => text.includes(kw));
 }
-
+// ======================
+// 端末ID（無料枠の回数を、同じWi-Fiの人どうしで共有しないための目印）
+// ======================
+function getDeviceId(): string | null {
+  try {
+    let id = localStorage.getItem('deviceId');
+    if (!id || !/^[A-Za-z0-9_-]{16,64}$/.test(id)) {
+      const bytes = new Uint8Array(16);
+      crypto.getRandomValues(bytes);
+      id = 'd' + Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+      localStorage.setItem('deviceId', id);
+    }
+    return id;
+  } catch {
+    return null; // 保存できない環境では、サーバー側がIPで数える
+  }
+}
 // ======================
 // Home（占い・観光情報・雑談ページ）
 // ======================
@@ -1187,6 +1203,7 @@ export default function FortunePage() {
           talkStyle: currentMode === 'free' ? talkStyleRef.current : null,
           characterMode: characterModeRef.current,
           email: typeof window !== 'undefined' ? localStorage.getItem('memberEmail') : null,
+          deviceId: typeof window !== 'undefined' ? getDeviceId() : null,
         }),
       });
       const data = await response.json();

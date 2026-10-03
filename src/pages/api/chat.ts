@@ -86,7 +86,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
  
    try {
-    const { message, email, mode, character, talkStyle, lang, characterMode } = req.body;
+      const { message, email, mode, character, talkStyle, lang, characterMode, deviceId } = req.body;
  
     // 占術・性格診断詳細・占い/観光の詳細版は有料コンテンツなので、
     // 決済確認を行わないこのエンドポイントからの直接生成は許可しない
@@ -180,36 +180,55 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
  
       // ====== 無料枠 / プレミアム会員 それぞれの回数制限チェック ======
       // 詳細版（fortune_detail/travel_detail）は購入済み扱いなので対象外
-      const limitConfig = FREE_LIMITS[mode];
+            const limitConfig = FREE_LIMITS[mode];
       if (limitConfig) {
-        // プレミアム会員は「メールアドレス単位」で1日200回、無料ユーザーは「IP単位」でモードごとの回数
-        const identifier = isPremiumMember && memberEmail ? `premium:${memberEmail}` : getClientIp(req);
-        const groupName = isPremiumMember ? 'premium_daily' : limitConfig.group;
-        const limitCount = isPremiumMember ? 200 : limitConfig.limit;
- 
-        const { data: usageData, error: usageError } = await supabaseAdmin.rpc(
-          'increment_fortune_usage',
-          {
-            p_identifier: identifier,
-            p_mode_group: groupName,
-            p_limit: limitCount,
+        // 1回分の利用を記録し、許可されたかを返す（チェック自体が失敗した場合は安全側に倒して許可）
+        const checkUsage = async (identifier: string, groupName: string, limitCount: number): Promise<boolean> => {
+          const { data: usageData, error: usageError } = await supabaseAdmin.rpc(
+            'increment_fortune_usage',
+            {
+              p_identifier: identifier,
+              p_mode_group: groupName,
+              p_limit: limitCount,
+            }
+          );
+          if (usageError) {
+            console.error('利用回数チェックエラー:', usageError);
+            return true;
           }
-        );
- 
-        if (usageError) {
-          // 制限チェック自体が失敗した場合は、安全側に倒して通常通り応答する
-          console.error('利用回数チェックエラー:', usageError);
+          return usageData?.[0]?.allowed !== false;
+        };
+
+        let allowed = true;
+        let blockedGroup = limitConfig.group;
+
+        if (isPremiumMember && memberEmail) {
+          // プレミアム会員はメールアドレス単位で1日200回
+          blockedGroup = 'premium_daily';
+          allowed = await checkUsage(`premium:${memberEmail}`, 'premium_daily', 200);
         } else {
-          const allowed = usageData?.[0]?.allowed;
-          if (allowed === false) {
-            return res.status(200).json({
-              reply: isPremiumMember
-                ? '本日はたくさんお話しいただきました🌙 また明日、続きをお話ししましょう[EMOTION:neutral]'
-                : '本日の無料回数の上限に達しました。また明日お話しましょう🌙 続きが気になる方はプレミアムプランもぜひ[EMOTION:neutral]',
-              limitReached: true,
-              modeGroup: groupName,
-            });
+          const ip = getClientIp(req);
+          const validDeviceId = typeof deviceId === 'string' && /^[A-Za-z0-9_-]{16,64}$/.test(deviceId);
+          if (validDeviceId) {
+            // 端末ごとにモード別の回数を数え、IPには大きめの上限（5倍）を別枠でかける
+            allowed = await checkUsage(`device:${deviceId}`, limitConfig.group, limitConfig.limit);
+            if (allowed) {
+              allowed = await checkUsage(ip, `${limitConfig.group}_ip`, limitConfig.limit * 5);
+            }
+          } else {
+            // 端末IDが無い場合は、従来どおりIPで厳しく数える
+            allowed = await checkUsage(ip, limitConfig.group, limitConfig.limit);
           }
+        }
+
+        if (!allowed) {
+          return res.status(200).json({
+            reply: isPremiumMember
+              ? '本日はたくさんお話しいただきました🌙 しばらくしてからまたお話ししましょう[EMOTION:neutral]'
+              : '無料回数の上限に達しました。しばらくしてからまたお話ししましょう🌙 続きが気になる方はプレミアムプランもぜひ[EMOTION:neutral]',
+            limitReached: true,
+            modeGroup: blockedGroup,
+          });
         }
       }
       // ====== ここまで ======
