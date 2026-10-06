@@ -7,6 +7,7 @@ import { OrbitControls } from "@react-three/drei";
 import { VRM, VRMLoaderPlugin } from "@pixiv/three-vrm";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import Head from "next/head";
 
 // ======================
 // ミステリアスな動く背景（「心に灯る部屋」の演出）
@@ -82,6 +83,8 @@ type ShareImageOptions = {
   bars?: { label: string; value: number }[];   // 性格診断用のバー表示
   body?: string;                                // 占術用の本文（長い場合は末尾を省略）
   footer: string;                               // 下部のURLなど
+  tagline?: string;                             // タイトル下の一言（性格診断の最も高い指標など）
+  cta?: string;                                 // フッター上の呼びかけ
 };
 
 function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -116,7 +119,13 @@ function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number
   if (current) lines.push(current);
   return lines;
 }
-
+const SHARE_CTA: Record<string, string> = {
+  ja: 'あなたも試してみよう',
+  en: 'Try it yourself',
+  zh: '你也来试试',
+  id: 'Coba juga',
+  es: 'Pruébalo tú también',
+};
 async function createShareImage(opts: ShareImageOptions): Promise<Blob | null> {
   const W = 1080, H = 1920;
   const canvas = document.createElement('canvas');
@@ -166,6 +175,11 @@ async function createShareImage(opts: ShareImageOptions): Promise<Blob | null> {
   ctx.fillStyle = '#ffffff';
   ctx.font = `bold 76px ${font}`;
   ctx.fillText(opts.title, W / 2, 400);
+    if (opts.tagline) {
+    ctx.fillStyle = '#f0abfc';
+    ctx.font = `bold 44px ${font}`;
+    ctx.fillText(opts.tagline, W / 2, 490);
+  }
 
   if (opts.bars) {
     // 性格診断：5指標のバー
@@ -209,7 +223,12 @@ async function createShareImage(opts: ShareImageOptions): Promise<Blob | null> {
     }
     ctx.textAlign = 'center';
   }
-
+  if (opts.cta) {
+    ctx.fillStyle = '#f0abfc';
+    ctx.font = `bold 40px ${font}`;
+    ctx.textAlign = 'center';
+    ctx.fillText(opts.cta, W / 2, 1740);
+  }
   // フッター
   ctx.fillStyle = 'rgba(255,255,255,0.7)';
   ctx.font = `bold 44px ${font}`;
@@ -1534,6 +1553,23 @@ export default function FortunePage() {
 
   return (
     <div style={{ width: "100vw", height: "100vh", position: "relative", background: "#111" }}>
+            <Head>
+        <title>心に灯る部屋 | A Room Where Your Heart Glows</title>
+        <meta name="description" content="AIアバターと話せる、占い・性格診断・心の相談の部屋。 / Chat with an AI avatar: fortune telling, personality test, and heart-to-heart talk." />
+        <link rel="canonical" href="https://adikio.com/room" />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="ADIKIO" />
+        <meta property="og:title" content="心に灯る部屋 | A Room Where Your Heart Glows" />
+        <meta property="og:description" content="AIアバターと話せる、占い・性格診断・心の相談の部屋。 / Fortune telling, personality test, and heart-to-heart talk with an AI avatar." />
+        <meta property="og:url" content="https://adikio.com/room" />
+        <meta property="og:image" content="https://adikio.com/og-room.png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="心に灯る部屋 | A Room Where Your Heart Glows" />
+        <meta name="twitter:description" content="AIアバターと話せる、占い・性格診断・心の相談の部屋。 / Fortune telling, personality test, and heart-to-heart talk with an AI avatar." />
+        <meta name="twitter:image" content="https://adikio.com/og-room.png" />
+      </Head>  
       <MysticBackground />
       <div style={{ position: "absolute", inset: 0 }}>
         <Canvas style={{ width: '100%', height: '100%' }} camera={{ position: [0, camSettings.camY, camSettings.camZ], fov: camSettings.fov }}>
@@ -1998,6 +2034,7 @@ export default function FortunePage() {
                     heading: t.topTitle,
                     title: occultTitle.replace(/^\S+\s/, ''),
                     body: occultResultText,
+                    cta: SHARE_CTA[lang],
                     footer: 'adikio.com/room',
                   });
                   if (blob) await saveShareImage(blob, 'adikio-result.png');
@@ -2078,6 +2115,11 @@ export default function FortunePage() {
                   heading: t.topTitle,
                   title: t.btnPersonality.replace(/^\S+\s/, ''),
                   bars: (Object.keys(personalityScores) as Trait[]).map((k) => ({ label: t.traitLabels[k], value: personalityScores[k] })),
+                    tagline: (() => {
+                    const top = (Object.keys(personalityScores) as Trait[]).reduce((a, b) => (personalityScores[a] >= personalityScores[b] ? a : b));
+                    return `${t.traitLabels[top]} ${personalityScores[top]}%`;
+                  })(),
+                  cta: SHARE_CTA[lang],
                   footer: 'adikio.com/room',
                 });
                 if (blob) await saveShareImage(blob, 'adikio-personality.png');
