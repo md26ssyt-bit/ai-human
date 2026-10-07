@@ -5,7 +5,16 @@ export default function Company() {
   const [form, setForm] = useState({ name: "", company: "", email: "", phone: "", message: "" });
   const [honeypot, setHoneypot] = useState(""); // 自動送信ボット対策（人には見えない欄）
   const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
-
+  const [copied, setCopied] = useState(false);
+  const copyEmail = async () => {
+    try {
+      await navigator.clipboard.writeText("contact@adikio.com");
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // コピーできない環境では何もしない（アドレスは文字で表示されています）
+    }
+  };
   const update = (key: keyof typeof form) => (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
@@ -130,7 +139,12 @@ export default function Company() {
             </div>
             <div>
               <dt>お問い合わせ</dt>
-              <dd><a href="mailto:contact@adikio.com">contact@adikio.com</a></dd>
+                           <dd className="email-row">
+                <span>contact@adikio.com</span>
+                <button type="button" className="copy-btn" onClick={copyEmail}>
+                  {copied ? "コピーしました" : "コピー"}
+                </button>
+              </dd>
             </div>
             <div>
               <dt>事業内容</dt>
@@ -396,6 +410,25 @@ export default function Company() {
           margin: 0;
           font-size: 15px;
         }
+                .email-row {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+        .copy-btn {
+          background: transparent;
+          color: #cfc9df;
+          border: 1px solid rgba(255,255,255,0.3);
+          border-radius: 4px;
+          padding: 4px 10px;
+          font-size: 12px;
+          cursor: pointer;
+        }
+        .copy-btn:hover {
+          color: #f2efe6;
+          border-color: #f2efe6;
+        }  
         .info-grid a {
           color: #f2efe6;
         }

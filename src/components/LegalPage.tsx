@@ -7,15 +7,9 @@ type Lang = "ja" | "en";
 
 const EMAIL = "contact@adikio.com";
 
-// 本文中のメールアドレスを自動でリンクにする
+// メールアドレスは、文字のまま表示する（クリックでメールアプリが開かないようにする）
 function withLinks(text: string) {
-  const parts = text.split(EMAIL);
-  return parts.map((part, i) => (
-    <span key={i}>
-      {part}
-      {i < parts.length - 1 && <a href={`mailto:${EMAIL}`}>{EMAIL}</a>}
-    </span>
-  ));
+  return text;
 }
 
 export default function LegalPage({ docs }: { docs: Record<Lang, LegalDoc> }) {
