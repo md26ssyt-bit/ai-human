@@ -1,4 +1,38 @@
+import { useState } from "react";
+import type { FormEvent } from "react";
+
 export default function Company() {
+  const [form, setForm] = useState({ name: "", company: "", email: "", phone: "", message: "" });
+  const [honeypot, setHoneypot] = useState(""); // 自動送信ボット対策（人には見えない欄）
+  const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
+
+  const update = (key: keyof typeof form) => (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (status === "sending") return;
+    if (honeypot) {
+      // ボットが入力する欄が埋まっていたら、送信せずに完了したように見せる
+      setStatus("done");
+      return;
+    }
+    setStatus("sending");
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) throw new Error("failed");
+      setStatus("done");
+      setForm({ name: "", company: "", email: "", phone: "", message: "" });
+    } catch {
+      setStatus("error");
+    }
+  };
+
   return (
     <div className="page">
       <header className="hero">
@@ -47,17 +81,18 @@ export default function Company() {
           <div className="product-row reverse">
             <div className="product-copy">
               <p className="eyebrow">B2C</p>
-              <h2>ADIKIO Companion</h2>
+              <h2>心に灯る部屋</h2>
               <p>
                 占い・性格診断、旅先やお店のご案内、そして気持ちを話したい時の話し相手。
                 女性・男性・魔女という3人のキャラクターから選んで、日本語・英語・中国語・
-                インドネシア語で会話できます。
+                インドネシア語・スペイン語で会話できます。
               </p>
               <ul className="feature-list">
-                <li>占い・性格診断／観光案内／雑談の3つの体験</li>
+                <li>占い・性格診断／観光案内／雑談／心の相談の体験</li>
                 <li>無料でお試しいただけます</li>
                 <li>より詳しい鑑定・プランは都度課金、毎日たくさん話したい方向けの月額プランも</li>
               </ul>
+              <p className="product-link"><a href="/room">心に灯る部屋を開く →</a></p>
             </div>
             <div className="product-visual visual-companion" aria-hidden="true" />
           </div>
@@ -91,7 +126,7 @@ export default function Company() {
           <dl className="info-grid">
             <div>
               <dt>所在地</dt>
-              <dd>［7-8-12、Nakayama, Higashi-ku,Niigata City］</dd>
+              <dd>新潟県新潟市東区中山7-8-12</dd>
             </div>
             <div>
               <dt>お問い合わせ</dt>
@@ -102,6 +137,59 @@ export default function Company() {
               <dd>AIアバターを用いた受付・案内システムの開発提供、および会話型AIサービスの運営</dd>
             </div>
           </dl>
+
+          <div className="form-wrap">
+            <h3>お問い合わせフォーム</h3>
+            {status === "done" ? (
+              <p className="form-done">送信しました。内容を確認のうえ、ご連絡いたします。</p>
+            ) : (
+              <form className="contact-form" onSubmit={handleSubmit}>
+                <label>
+                  <span className="label-text">お名前<em>必須</em></span>
+                  <input type="text" value={form.name} onChange={update("name")} required maxLength={100} />
+                </label>
+                <label>
+                  <span className="label-text">会社名・団体名<em className="opt">任意</em></span>
+                  <input type="text" value={form.company} onChange={update("company")} maxLength={200} />
+                </label>
+                <label>
+                  <span className="label-text">メールアドレス<em>必須</em></span>
+                  <input type="email" value={form.email} onChange={update("email")} required maxLength={200} />
+                </label>
+                <label>
+                  <span className="label-text">電話番号<em className="opt">任意</em></span>
+                  <input type="tel" value={form.phone} onChange={update("phone")} maxLength={50} />
+                </label>
+                <label>
+                  <span className="label-text">お問い合わせ内容<em>必須</em></span>
+                  <textarea value={form.message} onChange={update("message")} required rows={6} maxLength={5000} />
+                </label>
+                <input
+                  className="hp"
+                  type="text"
+                  name="website"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  aria-hidden="true"
+                  value={honeypot}
+                  onChange={(e) => setHoneypot(e.target.value)}
+                />
+                {status === "error" && (
+                  <p className="form-error">
+                    送信できませんでした。時間をおいてもう一度お試しいただくか、contact@adikio.com まで直接ご連絡ください。
+                  </p>
+                )}
+                <button type="submit" disabled={status === "sending"}>
+                  {status === "sending" ? "送信中..." : "送信する"}
+                </button>
+                <p className="form-note">
+                  いただいた内容は、お問い合わせへの対応にのみ使用します。詳しくは
+                  <a href="/privacy">プライバシーポリシー</a>をご覧ください。
+                </p>
+              </form>
+            )}
+          </div>
+
           <div className="legal-links">
             <a href="/terms">利用規約</a>
             <a href="/privacy">プライバシーポリシー</a>
@@ -118,11 +206,11 @@ export default function Company() {
         .page {
           background: #14131f;
           color: #f2efe6;
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic', 'Noto Sans JP', sans-serif;
           min-height: 100vh;
         }
         h1, h2, h3, .wordmark {
-          font-family: 'Fraunces', Georgia, serif;
+          font-family: 'Fraunces', Georgia, 'Hiragino Mincho ProN', 'Noto Serif JP', serif;
         }
         .hero {
           position: relative;
@@ -216,6 +304,9 @@ export default function Company() {
           line-height: 1.8;
           font-size: 15px;
         }
+        .product-link a {
+          color: #f2efe6;
+        }
         .feature-list {
           list-style: none;
           padding: 0;
@@ -307,6 +398,99 @@ export default function Company() {
         }
         .info-grid a {
           color: #f2efe6;
+        }
+        .form-wrap {
+          max-width: 560px;
+          margin: 0 0 56px;
+        }
+        .form-wrap h3 {
+          font-size: 20px;
+          font-weight: 500;
+          margin: 0 0 20px;
+        }
+        .contact-form {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          position: relative;
+        }
+        .contact-form label {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .label-text {
+          font-size: 13px;
+          color: #cfc9df;
+        }
+        .label-text em {
+          font-style: normal;
+          font-size: 11px;
+          color: #c9a227;
+          margin-left: 8px;
+        }
+        .label-text em.opt {
+          color: #7d7690;
+        }
+        .contact-form input,
+        .contact-form textarea {
+          background: rgba(255,255,255,0.06);
+          border: 1px solid rgba(255,255,255,0.18);
+          border-radius: 4px;
+          color: #f2efe6;
+          padding: 12px 14px;
+          font-size: 15px;
+          font-family: inherit;
+        }
+        .contact-form input:focus,
+        .contact-form textarea:focus {
+          outline: none;
+          border-color: #c9a227;
+        }
+        .contact-form .hp {
+          position: absolute;
+          left: -9999px;
+          width: 1px;
+          height: 1px;
+          opacity: 0;
+        }
+        .contact-form button {
+          background: #c9a227;
+          color: #14131f;
+          border: none;
+          border-radius: 4px;
+          padding: 14px;
+          font-size: 15px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .contact-form button:disabled {
+          opacity: 0.6;
+          cursor: default;
+        }
+        .form-note {
+          color: #a79fc0;
+          font-size: 12px;
+          line-height: 1.7;
+          margin: 0;
+        }
+        .form-note a {
+          color: #cfc9df;
+        }
+        .form-error {
+          color: #ff9a9a;
+          font-size: 13px;
+          line-height: 1.7;
+          margin: 0;
+        }
+        .form-done {
+          color: #cfc9df;
+          font-size: 15px;
+          line-height: 1.8;
+          border: 1px solid rgba(201,162,39,0.5);
+          background: rgba(201,162,39,0.06);
+          padding: 20px;
+          border-radius: 4px;
         }
         .legal-links a {
           color: #cfc9df;

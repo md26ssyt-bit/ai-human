@@ -40,7 +40,7 @@ export default function LegalPage({ docs }: { docs: Record<Lang, LegalDoc> }) {
         <title>{doc.title} | ADIKIO Technologies</title>
       </Head>
       <div className="top">
-        <a href="/company" className="back">← ADIKIO Technologies</a>
+        <a href="/" className="back">← ADIKIO Technologies</a>
         <div className="lang">
           <button type="button" aria-pressed={lang === "ja"} className={lang === "ja" ? "on" : ""} onClick={() => setLang("ja")}>日本語</button>
           <button type="button" aria-pressed={lang === "en"} className={lang === "en" ? "on" : ""} onClick={() => setLang("en")}>English</button>
