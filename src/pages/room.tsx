@@ -1556,19 +1556,19 @@ export default function FortunePage() {
             <Head>
         <title>心に灯る部屋 | A Room Where Your Heart Glows</title>
         <meta name="description" content="AIアバターと話せる、占い・性格診断・心の相談の部屋。 / Chat with an AI avatar: fortune telling, personality test, and heart-to-heart talk." />
-        <link rel="canonical" href="https://adikio.com/room" />
+        <link rel="canonical" href="https://www.adikio.com/room" />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="ADIKIO" />
         <meta property="og:title" content="心に灯る部屋 | A Room Where Your Heart Glows" />
         <meta property="og:description" content="AIアバターと話せる、占い・性格診断・心の相談の部屋。 / Fortune telling, personality test, and heart-to-heart talk with an AI avatar." />
-        <meta property="og:url" content="https://adikio.com/room" />
-        <meta property="og:image" content="https://adikio.com/og-room.png" />
+        <meta property="og:url" content="https://www.adikio.com/room" />
+        <meta property="og:image" content="https://www.adikio.com/og-room.png" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="心に灯る部屋 | A Room Where Your Heart Glows" />
         <meta name="twitter:description" content="AIアバターと話せる、占い・性格診断・心の相談の部屋。 / Fortune telling, personality test, and heart-to-heart talk with an AI avatar." />
-        <meta name="twitter:image" content="https://adikio.com/og-room.png" />
+        <meta name="twitter:image" content="https://www.adikio.com/og-room.png" />
       </Head>  
       <MysticBackground />
       <div style={{ position: "absolute", inset: 0 }}>
