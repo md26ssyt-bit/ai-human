@@ -1433,6 +1433,7 @@ export default function FortunePage() {
     const sessionId = params.get('session_id');
 
     if (params.get('subscribed') === '1') {
+         window.history.replaceState(null, '', window.location.pathname);
       setShowPremiumThanks(true);
     }
 
