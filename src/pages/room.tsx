@@ -941,6 +941,70 @@ const UI: Record<Lang, {
 // ======================
 // 選べるキャラクター
 // ======================
+// ======================
+// 購入前の確認文（EU向けの撤回権の確認を含む）
+// ======================
+const CONSENT_TEXT: Record<Lang, {
+  title: string; digital: string; digitalCheck: string;
+  subscription: string; subscriptionCheck: string;
+  proceed: string; cancel: string; terms: string; refund: string;
+}> = {
+  ja: {
+    title: 'ご購入の前にご確認ください',
+    digital: 'このコンテンツは、決済の確認後すぐに生成・提供されるデジタルコンテンツです。',
+    digitalCheck: 'コンテンツをすぐに提供することを希望します。提供が始まった時点で、EU域内の消費者に認められる14日間の撤回権を失うことを理解しました。',
+    subscription: 'プレミアムプランは、お申し込み後すぐにご利用いただけます。毎月自動で更新され、いつでも解約できます。',
+    subscriptionCheck: 'サービスをすぐに開始することを希望します。EU域内の消費者の撤回権により14日以内に撤回する場合は、すでに利用した分の料金をお支払いすることを理解しました。',
+    proceed: '同意して決済へ進む',
+    cancel: 'キャンセル',
+    terms: '利用規約',
+    refund: '返金ポリシー',
+  },
+  en: {
+    title: 'Please confirm before you purchase',
+    digital: 'This content is digital content that is generated and delivered immediately after your payment is confirmed.',
+    digitalCheck: 'I request immediate delivery of the content. I understand that once delivery begins, I lose the 14-day right of withdrawal available to consumers in the EU.',
+    subscription: 'The Premium plan can be used immediately after you subscribe. It renews automatically every month, and you can cancel at any time.',
+    subscriptionCheck: 'I request that the service start immediately. I understand that if I withdraw within 14 days under the EU consumer right of withdrawal, I will pay for the part of the service already used.',
+    proceed: 'Agree and continue to payment',
+    cancel: 'Cancel',
+    terms: 'Terms of Service',
+    refund: 'Refund Policy',
+  },
+  zh: {
+    title: '购买前请确认',
+    digital: '本内容是在支付确认后立即生成并提供的数字内容。',
+    digitalCheck: '我希望立即获得该内容。我理解，一旦开始提供，欧盟境内消费者享有的14天撤回权将不再适用。',
+    subscription: '高级会员在申请后即可立即使用，每月自动续订，可随时取消。',
+    subscriptionCheck: '我希望立即开始使用服务。我理解，如在14天内依据欧盟消费者撤回权撤回，需支付已使用部分的费用。',
+    proceed: '同意并前往付款',
+    cancel: '取消',
+    terms: '服务条款',
+    refund: '退款政策',
+  },
+  id: {
+    title: 'Mohon konfirmasi sebelum membeli',
+    digital: 'Konten ini adalah konten digital yang dibuat dan dikirim segera setelah pembayaran dikonfirmasi.',
+    digitalCheck: 'Saya meminta konten dikirim segera. Saya memahami bahwa begitu pengiriman dimulai, hak penarikan 14 hari bagi konsumen di UE tidak lagi berlaku.',
+    subscription: 'Paket Premium dapat langsung digunakan setelah Anda berlangganan. Paket ini diperpanjang otomatis setiap bulan dan dapat dibatalkan kapan saja.',
+    subscriptionCheck: 'Saya meminta layanan dimulai segera. Saya memahami bahwa jika saya menarik diri dalam 14 hari berdasarkan hak penarikan konsumen UE, saya akan membayar bagian layanan yang sudah digunakan.',
+    proceed: 'Setuju dan lanjut ke pembayaran',
+    cancel: 'Batal',
+    terms: 'Syarat Layanan',
+    refund: 'Kebijakan Pengembalian Dana',
+  },
+  es: {
+    title: 'Confirma antes de comprar',
+    digital: 'Este contenido es contenido digital que se genera y se entrega inmediatamente después de confirmarse el pago.',
+    digitalCheck: 'Solicito que el contenido se entregue de inmediato. Entiendo que, una vez iniciada la entrega, dejo de tener el derecho de desistimiento de 14 días que corresponde a los consumidores de la UE.',
+    subscription: 'El Plan Premium se puede usar inmediatamente después de suscribirte. Se renueva automáticamente cada mes y puedes cancelarlo en cualquier momento.',
+    subscriptionCheck: 'Solicito que el servicio comience de inmediato. Entiendo que, si desisto en un plazo de 14 días conforme al derecho de desistimiento de los consumidores de la UE, pagaré la parte del servicio ya utilizada.',
+    proceed: 'Aceptar y continuar al pago',
+    cancel: 'Cancelar',
+    terms: 'Términos de Servicio',
+    refund: 'Política de Reembolso',
+  },
+};
 type CharacterId = 'woman' | 'man' | 'witch';
 const CHARACTERS: { id: CharacterId; label: string; emoji: string; vrmUrl: string }[] = [
   { id: 'woman', label: '女性', emoji: '👩', vrmUrl: '/woman.vrm' },
@@ -1114,7 +1178,21 @@ export default function FortunePage() {
       setShowCamPanel(params.get('camera') === '1');
     }
   }, []);
-
+  // 購入前の確認画面（チェックが入って「同意して進む」が押されたら true を返す）
+  const [consentKind, setConsentKind] = useState<null | 'digital' | 'subscription'>(null);
+  const [consentChecked, setConsentChecked] = useState(false);
+  const consentResolveRef = useRef<((ok: boolean) => void) | null>(null);
+  const askConsent = (kind: 'digital' | 'subscription') =>
+    new Promise<boolean>((resolve) => {
+      consentResolveRef.current = resolve;
+      setConsentChecked(false);
+      setConsentKind(kind);
+    });
+  const answerConsent = (ok: boolean) => {
+    setConsentKind(null);
+    consentResolveRef.current?.(ok);
+    consentResolveRef.current = null;
+  };
   const isSpeakingRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
@@ -1330,6 +1408,7 @@ export default function FortunePage() {
 
   // 詳細版をStripeで購入する（占い・観光どちらでも使える汎用版、価格はサーバー側の定義だけを信用する）
   const handleUnlockDetail = async (kind: DetailKind) => {
+    if (!(await askConsent('digital'))) return;
     const res = await fetch('/api/create-product-checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1427,6 +1506,7 @@ export default function FortunePage() {
 
   // PDFレポートを申し込む（価格はサーバー側の定義だけを信用する。reportType=商品キー）
   const handleUnlockPdf = async (reportType: string, payload: any) => {
+    if (!(await askConsent('digital'))) return;
     const res = await fetch('/api/create-product-checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1438,6 +1518,7 @@ export default function FortunePage() {
 
   // 占術の鑑定を申し込む
   const handleUnlockOccult = async () => {
+    if (!(await askConsent('digital'))) return;
     if (!occultType) return;
     const res = await fetch('/api/create-product-checkout', {
       method: 'POST',
@@ -1455,6 +1536,7 @@ export default function FortunePage() {
 
   // 性格診断の詳細結果を申し込む（スコアは表示の再現用にのみローカル保存。採点生成には使わない）
   const handleUnlockPersonality = async (scores: Record<Trait, number>) => {
+     if (!(await askConsent('digital'))) return;
     localStorage.setItem('personalityScoresCache', JSON.stringify(scores));
     const scoresText = (Object.keys(scores) as Trait[]).map((k) => `${t.traitLabels[k]}:${scores[k]}%`).join('、');
     const res = await fetch('/api/create-product-checkout', {
@@ -1475,6 +1557,7 @@ export default function FortunePage() {
   const handleSubscribe = async () => {
     const email = premiumEmail.trim().toLowerCase(); // サーバー側と同じ基準（小文字）に統一する
     if (!email || !email.includes('@')) return;
+      if (!(await askConsent('subscription'))) return;
     setPremiumLoading(true);
     setPremiumError('');
     // 会員判定に使うため、決済ページへ移動する前に保存しておく（失敗した場合は元に戻す）
@@ -1814,7 +1897,52 @@ export default function FortunePage() {
           </div>
         </div>
       )}
-
+      {consentKind && (() => {
+        const c = CONSENT_TEXT[lang];
+        const legalLang = lang === 'ja' ? 'ja' : 'en';
+        return (
+          <div style={{
+            position: "absolute", inset: 0, background: "rgba(0,0,0,0.8)",
+            display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 24,
+          }}>
+            <div style={{ background: "#fff", color: "#222", borderRadius: 12, padding: 24, width: "90%", maxWidth: 400, maxHeight: "85vh", overflowY: "auto" }}>
+              <div style={{ fontWeight: "bold", fontSize: 17, marginBottom: 12 }}>{c.title}</div>
+              <div style={{ fontSize: 14, lineHeight: 1.7, marginBottom: 14 }}>
+                {consentKind === 'digital' ? c.digital : c.subscription}
+              </div>
+              <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13, lineHeight: 1.6, marginBottom: 14, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={consentChecked}
+                  onChange={(e) => setConsentChecked(e.target.checked)}
+                  style={{ marginTop: 3, flexShrink: 0 }}
+                />
+                <span>{consentKind === 'digital' ? c.digitalCheck : c.subscriptionCheck}</span>
+              </label>
+              <div style={{ fontSize: 12, marginBottom: 16 }}>
+                <a href={`/terms?lang=${legalLang}`} target="_blank" rel="noreferrer">{c.terms}</a>
+                {' / '}
+                <a href={`/refund?lang=${legalLang}`} target="_blank" rel="noreferrer">{c.refund}</a>
+              </div>
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <button
+                  onClick={() => answerConsent(false)}
+                  style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid #ccc", background: "#fff" }}
+                >
+                  {c.cancel}
+                </button>
+                <button
+                  onClick={() => answerConsent(true)}
+                  disabled={!consentChecked}
+                  style={{ padding: "10px 14px", borderRadius: 8, border: "none", background: "#7c4dff", color: "#fff", fontWeight: "bold", opacity: consentChecked ? 1 : 0.4 }}
+                >
+                  {c.proceed}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
       {showPremiumThanks && (
         <div style={{
           position: "absolute", inset: 0, background: "rgba(0,0,0,0.75)",
