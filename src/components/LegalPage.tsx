@@ -31,7 +31,7 @@ export default function LegalPage({ docs }: { docs: Record<Lang, LegalDoc> }) {
   return (
     <div className="legal-page">
       <Head>
-        <title>{doc.title} | ADIKIO Technologies</title>
+       <title>{`${doc.title} | ADIKIO Technologies`}</title>
       </Head>
       <div className="top">
         <a href="/" className="back">← ADIKIO Technologies</a>

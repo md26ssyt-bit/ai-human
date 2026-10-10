@@ -38,8 +38,8 @@ async function upsertSubscription(params: {
   const { stripeCustomerId, stripeSubscriptionId, status, currentPeriodEnd } = params;
   // 会員判定と同じ基準で照合できるよう、メールは小文字に統一して保存する
   const email = params.email.trim().toLowerCase();
- 
-  await supabaseAdmin
+
+  const { error } = await supabaseAdmin
     .from('fortune_subscriptions')
     .upsert(
       {
@@ -54,6 +54,12 @@ async function upsertSubscription(params: {
       },
       { onConflict: 'email' }
     );
+
+  // 書き込みに失敗したら、失敗として扱う（ログに残り、Stripeの配信も失敗として表示される）
+  if (error) {
+    console.error('fortune_subscriptions 書き込みエラー:', error.code, error.message);
+    throw new Error(`fortune_subscriptions upsert failed: ${error.message}`);
+  }
 }
  
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
