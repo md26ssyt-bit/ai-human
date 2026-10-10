@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
 import { PRODUCT_PRICES, PRODUCT_LABELS, PDF_PRODUCTS, ProductKey } from '@/lib/paidProducts';
+import { CONSENT_VERSION, DIGITAL_NOTICE, pickLang } from '@/lib/checkoutNotices';
  
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
  
@@ -24,11 +25,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const currency = lang === 'ja' ? 'jpy' : 'usd';
     const unitAmount = currency === 'jpy' ? price.jpy : price.usd;
  
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://adikio.com';
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adikio.com';
     const returnParam = PDF_PRODUCTS.includes(productKey) ? 'pdf_unlocked' : 'paid_content';
  
     // ペイロード（生年月日・気にしていること等）は、改ざんされないようStripe側のセッションに
     // 保存しておく。決済完了後はここに保存した内容だけを信用して生成する。
+    // あわせて、購入前の確認画面（即時提供・撤回権の確認）を経たことの記録も残す。
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       line_items: [
@@ -43,11 +45,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ],
       success_url: `${baseUrl}/room?${returnParam}=1&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/room?${returnParam}=0`,
+      custom_text: {
+        submit: { message: DIGITAL_NOTICE[pickLang(lang)] },
+      },
       metadata: {
         productKey,
         payload: JSON.stringify(payload || {}).slice(0, 480),
         character: character || 'woman',
         lang: lang || 'ja',
+        consent_kind: 'digital_immediate_delivery',
+        consent_version: CONSENT_VERSION,
+        consent_at: new Date().toISOString(),
       },
     });
  
@@ -57,3 +65,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: '決済ページの作成に失敗しました' });
   }
 }
+ 
