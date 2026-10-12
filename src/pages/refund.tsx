@@ -3,7 +3,7 @@ import type { LegalDoc } from "../components/LegalPage";
 
 const ja: LegalDoc = {
   title: "返金ポリシー",
-  updated: "2026年10月5日",
+  updated: "2026年10月11日",
   blocks: [
     {
       p: [
@@ -86,7 +86,7 @@ const ja: LegalDoc = {
 
 const en: LegalDoc = {
   title: "Refund Policy",
-  updated: "October 5, 2026",
+  updated: "October 11, 2026",
   blocks: [
     {
       p: [
