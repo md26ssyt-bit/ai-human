@@ -7,7 +7,7 @@ const ja: LegalDoc = {
   blocks: [
     {
       p: [
-        "本利用規約（以下「本規約」）は、ADIKIO Technologies（所在地：日本国7-8-12, Nakayama Higashi-ku, Niigata City, Japan。以下「当社」）が提供するウェブサービス「心に灯る部屋」（以下「本サービス」）の利用条件を定めるものです。本サービスを利用された時点で、利用者は本規約に同意したものとみなされます。",
+        "本利用規約（以下「本規約」）は、ADIKIO Technologies（所在地：7-8-12, Nakayama Higashi-ku, Niigata City, Japan。以下「当社」）が提供するウェブサービス「心に灯る部屋」（以下「本サービス」）の利用条件を定めるものです。本サービスを利用された時点で、利用者は本規約に同意したものとみなされます。",
       ],
     },
     {
