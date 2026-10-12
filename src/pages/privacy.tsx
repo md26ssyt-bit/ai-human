@@ -13,7 +13,7 @@ const ja: LegalDoc = {
     {
       h: "1. 管理者（データ管理者）",
       p: [
-        "ADIKIO Technologies\n新潟県新潟市東区中山7-8-12\ncontact@adikio.com",
+        "ADIKIO Technologies\n7-8-12, Nakayama Higashi-ku, Niigata City, Japan\ncontact@adikio.com",
       ],
     },
     {
@@ -127,7 +127,7 @@ const ja: LegalDoc = {
     {
       h: "15. お問い合わせ",
       p: [
-        "ADIKIO Technologies\n新潟県新潟市東区中山7-8-12\ncontact@adikio.com",
+        "ADIKIO Technologies\n7-8-12, Nakayama Higashi-ku, Niigata City, Japan\ncontact@adikio.com",
       ],
     },
   ],

@@ -135,7 +135,7 @@ export default function Company() {
           <dl className="info-grid">
             <div>
               <dt>所在地</dt>
-              <dd>新潟県新潟市東区中山7-8-12</dd>
+              <dd>7-8-12, Nakayama Higashi-ku, Niigata City, Japan</dd>
             </div>
             <div>
               <dt>お問い合わせ</dt>
