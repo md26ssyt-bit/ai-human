@@ -115,6 +115,7 @@ export function partnerScore(s: RunState, turnsUsed: number): Breakdown {
  
 export type StepResult = {
   bucket: 'good' | 'normal' | 'bad';
+  tone: Tone; // 選ばれた口調（ブラウザには、身振りに変えて、返す）
   reaction: { text: string; expr: Expr };
   outcome: 'continue' | 'cleared' | 'rejected' | 'friend';
   animation?: 'fall' | 'smoke';
@@ -150,7 +151,7 @@ export function step(s: RunState, choiceIndex: number, rng: Rng): StepResult | n
  
   // 1) フラれる（警戒度が、上限に達した）
   if (next.wary >= W) {
-    return { bucket, reaction: rx, outcome: 'rejected', animation: rng() < 0.5 ? 'fall' : 'smoke', archetype: s.archetype, nextState: null };
+    return { bucket, tone, reaction: rx, outcome: 'rejected', animation: rng() < 0.5 ? 'fall' : 'smoke', archetype: s.archetype, nextState: null };
   }
  
   // 2) 早期クリア、または、最終ターンでの判定
@@ -166,13 +167,13 @@ export function step(s: RunState, choiceIndex: number, rng: Rng): StepResult | n
         spark: START.spark, trust: START.trust, wary: START.wary,
         total: round1(s.total + pts), cleared: s.cleared + 1, tones: pickTones(rng),
       };
-      return { bucket, reaction: rx, outcome: 'cleared', archetype: s.archetype, breakdown: bd, partnerPoints: pts, nextState: ns };
+      return { bucket, tone, reaction: rx, outcome: 'cleared', archetype: s.archetype, breakdown: bd, partnerPoints: pts, nextState: ns };
     }
-    return { bucket, reaction: rx, outcome: 'friend', archetype: s.archetype, nextState: null };
+    return { bucket, tone, reaction: rx, outcome: 'friend', archetype: s.archetype, nextState: null };
   }
  
   next.turn = s.turn + 1;
   next.tones = pickTones(rng);
-  return { bucket, reaction: rx, outcome: 'continue', nextState: next };
+  return { bucket, tone, reaction: rx, outcome: 'continue', nextState: next };
 }
  

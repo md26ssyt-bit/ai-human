@@ -1,10 +1,18 @@
 import { useState } from "react";
 import Head from "next/head";
+import dynamic from "next/dynamic";
 
-// 恋愛ランゲーム（試作 v0.1）。ゲームの進行と点数の計算は、すべて、サーバー（/api/game/*）が行う。
+// 3Dの舞台は、ブラウザだけで動かす（サーバー側の描画では、使わない）
+const GameStage = dynamic(() => import("../components/GameStage"), {
+  ssr: false,
+  loading: () => <div style={{ height: 340 }} />,
+});
+
+// 恋愛ランゲーム（試作 v0.2：3Dアバター）。ゲームの進行と点数の計算は、すべて、サーバー（/api/game/*）が行う。
 // この画面は、表示と、選択の送信だけを担当する。
 
 type Expr = "happy" | "neutral" | "sad" | "angry" | "surprised";
+type Gesture = "idle" | "nod" | "tilt" | "look_away" | "lean_in" | "arms_crossed" | "wave";
 type View = {
   partnerIndex: number; turn: number; maxTurns: number;
   partnerLine: string; partnerExpr: Expr;
@@ -21,13 +29,14 @@ type StepResp = {
   partnerType: string | null;
   breakdown: Breakdown | null;
   partnerPoints: number | null;
+  playerGesture: Gesture;
+  playerExpr: Expr;
+  partnerGesture: Gesture;
   endLine: string | null;
   final: { total: number; cleared: number } | null;
   token: string | null;
   view: View | null;
 };
-
-const FACE: Record<Expr, string> = { happy: "😊", neutral: "😐", sad: "😢", angry: "😠", surprised: "😲" };
 
 export default function Game() {
   const [stage, setStage] = useState<"age" | "role" | "play" | "end">("age");
@@ -40,13 +49,27 @@ export default function Game() {
   const [error, setError] = useState("");
   const [anim, setAnim] = useState<"fall" | "smoke" | null>(null);
 
+  // アバターの動き
+  const [playerExpr, setPlayerExpr] = useState<Expr>("neutral");
+  const [playerGesture, setPlayerGesture] = useState<Gesture>("idle");
+  const [partnerGesture, setPartnerGesture] = useState<Gesture>("idle");
+  const [playerKey, setPlayerKey] = useState(0);
+  const [partnerKey, setPartnerKey] = useState(0);
+
+  const resetMotion = () => {
+    setPlayerExpr("neutral"); setPlayerGesture("idle"); setPartnerGesture("idle");
+    setPlayerKey((k) => k + 1); setPartnerKey((k) => k + 1);
+  };
+
   const start = async (r: "W" | "M") => {
     setBusy(true); setError("");
     try {
       const res = await fetch("/api/game/start", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role: r }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "failed");
-      setRole(r); setToken(data.token); setView(data.view); setResp(null); setPending(null); setAnim(null); setStage("play");
+      setRole(r); setToken(data.token); setView(data.view); setResp(null); setPending(null); setAnim(null);
+      resetMotion();
+      setStage("play");
     } catch (e) { setError("ゲームを始められませんでした。もう一度お試しください。"); }
     setBusy(false);
   };
@@ -60,6 +83,8 @@ export default function Game() {
       if (!res.ok) throw new Error(data.error || "failed");
       setResp(data);
       setPending({ token: data.token, view: data.view });
+      setPlayerExpr(data.playerExpr); setPlayerGesture(data.playerGesture); setPlayerKey((k) => k + 1);
+      setPartnerGesture(data.partnerGesture); setPartnerKey((k) => k + 1);
       if (data.outcome === "rejected") setAnim(data.animation);
     } catch (e) { setError("通信に失敗しました。もう一度、選んでください。"); }
     setBusy(false);
@@ -69,10 +94,9 @@ export default function Game() {
     if (!resp || !pending) return;
     if (resp.outcome === "rejected" || resp.outcome === "friend") { setStage("end"); return; }
     setToken(pending.token); setView(pending.view); setResp(null); setPending(null);
+    resetMotion();
   };
 
-  const youFace = role === "W" ? "👩" : "👨";
-  const partnerFace = role === "W" ? "👨" : "👩";
   const pct = (v: number) => Math.max(0, Math.min(100, v));
 
   return (
@@ -92,8 +116,8 @@ export default function Game() {
       {stage === "role" && (
         <div className="card center">
           <h1>どちらの役で遊びますか？</h1>
-          <button className="btn" disabled={busy} onClick={() => start("W")}>👩 女性役（口説かれる側）</button>
-          <button className="btn alt" disabled={busy} onClick={() => start("M")}>👨 男性役（口説く側）</button>
+          <button className="btn" disabled={busy} onClick={() => start("W")}>女性役（口説かれる側）</button>
+          <button className="btn alt" disabled={busy} onClick={() => start("M")}>男性役（口説く側）</button>
           <p className="small">本人の性別は、問いません。どちらの役でも、遊べます。</p>
           {error && <p className="err">{error}</p>}
         </div>
@@ -114,12 +138,18 @@ export default function Game() {
           </div>
           <p className="small hint">ときめきと安心を、線（目標）まで、伸ばしましょう。警戒度が、いっぱいになると、フラれます。</p>
 
-          <div className={`stage ${anim ? "anim-" + anim : ""}`}>
-            <div className={`avatar you ${anim === "fall" ? "fall" : ""} ${anim === "smoke" ? "smoke" : ""}`}>
-              <span>{youFace}</span>
-              {anim === "smoke" && <><i className="puff p1" /><i className="puff p2" /><i className="puff p3" /><i className="puff p4" /></>}
-            </div>
-            <div className="avatar partner"><span>{FACE[resp ? resp.reaction.expr : view.partnerExpr]}</span></div>
+          <div className="stagebox">
+            <div className="rain" />
+            <GameStage
+              role={role}
+              playerExpr={playerExpr}
+              partnerExpr={resp ? resp.reaction.expr : view.partnerExpr}
+              playerGesture={playerGesture}
+              partnerGesture={partnerGesture}
+              playerKey={playerKey}
+              partnerKey={partnerKey}
+              effect={anim ?? "none"}
+            />
           </div>
 
           <div className="bubble">
@@ -193,19 +223,12 @@ export default function Game() {
         .chip.gold { background: rgba(201,162,39,0.22); color: #ffe08a; }
         .bars { display: grid; gap: 22px; margin-top: 18px; }
         .hint { margin: 10px 0 0; }
-        .stage { position: relative; display: flex; justify-content: space-between; align-items: flex-end; height: 150px; margin: 14px 0 6px; padding: 0 20px;
-          background: linear-gradient(#251c4a, #17122e); border-radius: 16px; overflow: hidden; }
-        .avatar { position: relative; font-size: 74px; line-height: 1; padding-bottom: 14px; }
-        .avatar.fall { transform-origin: 50% 100%; animation: fall 1.4s ease-in forwards; }
-        .avatar.smoke > span { display: inline-block; animation: vanish 1.6s ease-in forwards; }
-        .puff { position: absolute; border-radius: 50%; background: rgba(245,245,255,0.9); filter: blur(6px); opacity: 0; animation: puff 1.6s ease-out forwards; }
-        .p1 { width: 60px; height: 60px; left: -10px; top: 10px; }
-        .p2 { width: 70px; height: 70px; left: 20px; top: -4px; animation-delay: .1s; }
-        .p3 { width: 54px; height: 54px; left: 40px; top: 24px; animation-delay: .2s; }
-        .p4 { width: 66px; height: 66px; left: 0px; top: 30px; animation-delay: .15s; }
-        @keyframes fall { 0% { transform: rotate(0); } 60% { transform: rotate(80deg) translateY(10px); } 100% { transform: rotate(90deg) translateY(20px); } }
-        @keyframes vanish { 0% { transform: scale(1); opacity: 1; } 60% { transform: scale(0.6); opacity: .6; } 100% { transform: scale(0); opacity: 0; } }
-        @keyframes puff { 0% { transform: scale(.2); opacity: 0; } 30% { opacity: .95; } 100% { transform: scale(2.2); opacity: 0; } }
+        .stagebox { position: relative; margin: 14px 0 6px; border-radius: 16px; overflow: hidden;
+          background: linear-gradient(#2a2058, #15102c 70%, #0d0a1c); }
+        .rain { position: absolute; inset: 0; pointer-events: none; opacity: .5;
+          background-image: repeating-linear-gradient(100deg, rgba(190,205,255,.35) 0 1px, transparent 1px 16px);
+          background-size: 100% 200%; animation: rainfall .9s linear infinite; }
+        @keyframes rainfall { from { background-position: 0 0; } to { background-position: -30px 100%; } }
         .bubble { margin-top: 10px; padding: 14px 16px; border-radius: 16px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); }
         .who { font-size: 12px; color: #f0abfc; margin-bottom: 4px; }
         .line { font-size: 18px; line-height: 1.6; color: #fff; }

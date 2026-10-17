@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { step, viewOf } from '@/lib/game/engine';
 import type { RunState } from '@/lib/game/engine';
 import { ARCHETYPE_LABEL, FRIEND_LINE, REJECT_LINE } from '@/lib/game/content';
+import { PARTNER_GESTURE, TONE_EXPR, TONE_GESTURE } from '@/lib/game/gestures';
 import { open, seal } from '@/lib/game/token';
  
 // 選択肢を1つ選ぶ。結果の計算は、すべて、ここ（サーバー）で行う。
@@ -21,6 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const result = step(state, Math.floor(choice), Math.random);
     if (!result) return res.status(400).json({ error: '選択肢が不正です' });
  
+    // アバターの動き（口調の名前そのものは、ブラウザには、返さない）
     const base = {
       bucket: result.bucket,
       reaction: result.reaction,
@@ -29,6 +31,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       partnerType: result.archetype ? ARCHETYPE_LABEL[result.archetype] : null,
       breakdown: result.breakdown ?? null,
       partnerPoints: result.partnerPoints ?? null,
+      playerGesture: TONE_GESTURE[result.tone],
+      playerExpr: TONE_EXPR[result.tone],
+      partnerGesture: PARTNER_GESTURE[state.archetype][result.bucket],
     };
  
     if (result.outcome === 'rejected' || result.outcome === 'friend') {
