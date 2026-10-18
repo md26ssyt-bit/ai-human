@@ -2,6 +2,8 @@
  
 import { ARCHETYPES, MATRIX, REACTIONS, SCENE_1, TONES } from './content';
 import type { Archetype, Expr, Role, Tone } from './content';
+import { audioIds, turnTextOf } from './text';
+import type { Lang } from './text';
  
 // ===== 調整用の定数（遊んで、数字を整える） =====
 export const START = { spark: 30, trust: 30, wary: 10 };
@@ -74,6 +76,7 @@ export type TurnView = {
   maxTurns: number;
   partnerLine: string;
   partnerExpr: Expr;
+  partnerAudio: string; // 相手のセリフの音声ファイル名（フォルダは、言語ごと）
   choices: { id: number; text: string }[];
   stats: { spark: number; trust: number; wary: number };
   threshold: number;
@@ -83,15 +86,17 @@ export type TurnView = {
   cleared: number;
 };
  
-export function viewOf(s: RunState): TurnView {
-  const t = SCENE_1[s.role][s.turn];
+export function viewOf(s: RunState, lang: Lang = 'ja'): TurnView {
+  const t = SCENE_1[s.role][s.turn]; // 表情は、言語に関係なく、同じ
+  const tx = turnTextOf(s.role, s.turn, lang); // 文章は、言語ごと
   return {
     partnerIndex: s.n,
     turn: s.turn + 1,
     maxTurns: MAX_TURNS,
-    partnerLine: t.line,
+    partnerLine: tx.line,
     partnerExpr: t.expr,
-    choices: s.tones.map((tone, i) => ({ id: i, text: t.choices[tone] })),
+    partnerAudio: audioIds.line(s.role, s.turn),
+    choices: s.tones.map((tone, i) => ({ id: i, text: tx.choices[tone] })),
     stats: { spark: round1(s.spark), trust: round1(s.trust), wary: round1(s.wary) },
     threshold: thresholdFor(s.n),
     wariLimit: wariLimitFor(s.n),
