@@ -2,8 +2,8 @@
  
 import { ARCHETYPES, SCENE_1 } from './content';
 import type { Role } from './content';
-import { LANGS, audioIds, endLineOf, reactionTextOf, turnTextOf } from './text';
-import type { Lang } from './text';
+import { LANGS, audioIds, endLineOf, reactionTextOf, turnTextOf } from '../../pages/api/game/text';
+import type { Lang } from '../../pages/api/game/text';
  
 export type AudioItem = { lang: Lang; id: string; text: string; character: 'woman' | 'man' };
  
