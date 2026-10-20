@@ -1,284 +1,332 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { MutableRefObject } from "react";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { VRMLoaderPlugin } from "@pixiv/three-vrm";
-import type { VRM } from "@pixiv/three-vrm";
-import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { useRef, useState } from "react";
+import Head from "next/head";
+import dynamic from "next/dynamic";
+import { UI, UI_LANGS, LANG_NAME } from "@/lib/game/ui";
+import type { UiLang } from "@/lib/game/ui";
 
-// 恋愛ランゲームの舞台：2体のアバター（プレイヤー役が左、相手が右）を、向かい合わせて表示する。
-// このファイルは、画面の表示だけを担当する（点数や進行は、サーバーが決める）。
+// 3Dの舞台は、ブラウザだけで動かす（サーバー側の描画では、使わない）
+const GameStage = dynamic(() => import("../components/GameStage"), {
+  ssr: false,
+  loading: () => <div style={{ height: 340 }} />,
+});
 
-export type Expr = "happy" | "neutral" | "sad" | "angry" | "surprised";
-export type Gesture = "idle" | "nod" | "tilt" | "look_away" | "lean_in" | "arms_crossed" | "wave";
-export type Effect = "none" | "fall" | "smoke";
+// 恋愛ランゲーム（試作）。ゲームの進行と点数の計算は、すべて、サーバー（/api/game/*）が行う。
+// この画面は、表示と、選択の送信、音声の再生だけを担当する。
 
-// 腕のポーズ（回転の値。モデルによって、見え方が少し違うので、見ながら調整する）
-type Arm = { lUx: number; lUy: number; lUz: number; lLy: number; rUx: number; rUy: number; rUz: number; rLy: number };
-const ARM_IDLE: Arm = { lUx: 0, lUy: 0, lUz: -1.2, lLy: 0, rUx: 0, rUy: 0, rUz: 1.2, rLy: 0 };
-const ARM_CROSSED: Arm = { lUx: -0.6, lUy: -1.0, lUz: -1.2, lLy: -1.5, rUx: -0.35, rUy: 1.0, rUz: 1.2, rLy: 1.2 };
-const ARM_KEYS = Object.keys(ARM_IDLE) as (keyof Arm)[];
-
-type AvatarProps = {
-  url: string;
-  x: number;
-  yaw: number; // 向き（相手のほうへ、少し向ける）
-  side: "left" | "right";
-  expr: Expr;
-  gesture: Gesture;
-  gestureKey: number; // 同じ身振りを、もう一度、動かすための番号
-  effect: Effect;
-  mouthRef?: MutableRefObject<number>; // 口の開き（0〜1）。話している相手にだけ、渡す
+type Expr = "happy" | "neutral" | "sad" | "angry" | "surprised";
+type Gesture = "idle" | "nod" | "tilt" | "look_away" | "lean_in" | "arms_crossed" | "wave";
+type View = {
+  partnerIndex: number; turn: number; maxTurns: number;
+  partnerLine: string; partnerExpr: Expr; partnerAudio: string;
+  choices: { id: number; text: string }[];
+  stats: { spark: number; trust: number; wary: number };
+  threshold: number; wariLimit: number; multiplier: number; total: number; cleared: number;
 };
-
-function Avatar(props: AvatarProps) {
-  const { url, x, yaw, side, expr, gesture, gestureKey, effect, mouthRef } = props;
-  const group = useRef<THREE.Group>(null);
-  const [vrm, setVrm] = useState<VRM | null>(null);
-  const baseY = useRef(0);
-  const clock = useRef(0);
-  const gStart = useRef(0);
-  const eStart = useRef(0);
-  const blink = useRef({ timer: Math.random() * 2, next: 3, value: 0 });
-  const cur = useRef({
-    headX: 0, headY: 0, headZ: 0, spineX: 0,
-    arm: { ...ARM_IDLE } as Arm,
-    ex: { happy: 0, sad: 0, angry: 0, surprised: 0, neutral: 0.3 } as Record<Expr, number>,
-    mouth: 0,
-  });
-
-  useEffect(() => {
-    let disposed = false;
-    const loader = new GLTFLoader();
-    loader.register((parser) => new VRMLoaderPlugin(parser));
-    loader.load(
-      url,
-      (gltf) => {
-        if (disposed) return;
-        const m = gltf.userData.vrm as VRM;
-        // 足もとが、原点（地面）にくるように、位置をそろえる
-        const box = new THREE.Box3().setFromObject(m.scene);
-        const center = box.getCenter(new THREE.Vector3());
-        m.scene.position.x -= center.x;
-        m.scene.position.z -= center.z;
-        m.scene.position.y -= box.min.y;
-        baseY.current = m.scene.position.y;
-        setVrm(m);
-      },
-      undefined,
-      (err) => console.error("VRM読み込みエラー:", err)
-    );
-    return () => { disposed = true; };
-  }, [url]);
-
-  useEffect(() => { gStart.current = clock.current; }, [gestureKey, gesture]);
-  useEffect(() => { eStart.current = clock.current; }, [effect]);
-
-  useFrame((_, delta) => {
-    if (!vrm) return;
-    clock.current += delta;
-    const t = clock.current - gStart.current;
-    const et = clock.current - eStart.current;
-    const k = Math.min(1, delta * 8);
-    const lerp = (a: number, b: number) => a + (b - a) * k;
-    const away = side === "left" ? -1 : 1; // 相手と、反対の向き
-
-    // ---- 身振りの目標値 ----
-    let headX = 0, headY = 0, headZ = 0, spineX = 0;
-    let arm: Arm = ARM_IDLE;
-    switch (gesture) {
-      case "nod": headX = 0.2 * Math.sin(t * 7) * Math.exp(-t * 1.4); break;
-      case "tilt": headZ = 0.22 * -away; break;
-      case "look_away": headY = 0.6 * away; headX = 0.1; break;
-      case "lean_in": spineX = 0.14; headX = 0.04; break;
-      case "arms_crossed": arm = ARM_CROSSED; headX = 0.05; break;
-      case "wave":
-        if (t < 1.8) {
-          arm = { ...ARM_IDLE, rUz: -0.5 + 0.2 * Math.sin(t * 9), rLy: 0.4 };
-        }
-        break;
-      default: break;
-    }
-
-    const c = cur.current;
-    c.headX = lerp(c.headX, headX);
-    c.headY = lerp(c.headY, headY);
-    c.headZ = lerp(c.headZ, headZ);
-    c.spineX = lerp(c.spineX, spineX);
-    for (const key of ARM_KEYS) c.arm[key] = lerp(c.arm[key], arm[key]);
-
-    // ---- 表情・まばたき ----
-    const b = blink.current;
-    b.timer += delta;
-    if (b.timer > b.next) {
-      b.value += delta * 6;
-      if (b.value >= 1) { b.value = 1; b.timer = 0; b.next = 2 + Math.random() * 3; }
-    } else {
-      b.value = Math.max(0, b.value - delta * 6);
-    }
-    const targets: Record<Expr, number> = {
-      happy: expr === "happy" ? 0.8 : 0, sad: expr === "sad" ? 0.8 : 0,
-      angry: expr === "angry" ? 0.8 : 0, surprised: expr === "surprised" ? 0.8 : 0,
-      neutral: expr === "neutral" ? 0.3 : 0,
-    };
-    (Object.keys(targets) as Expr[]).forEach((e) => { c.ex[e] = lerp(c.ex[e], targets[e]); });
-
-    // ---- 頭・背骨（更新の前に設定）----
-    const h: any = vrm.humanoid;
-    const norm = (name: string) => h?.getNormalizedBoneNode?.(name) ?? h?.getRawBoneNode?.(name);
-    const head = norm("head");
-    if (head) head.rotation.set(c.headX, c.headY, c.headZ);
-    const spine = norm("spine");
-    if (spine) spine.rotation.x = c.spineX;
-
-    if (vrm.expressionManager) {
-      const em = vrm.expressionManager;
-      em.setValue("blink", b.value);
-      (Object.keys(c.ex) as Expr[]).forEach((e) => em.setValue(e, c.ex[e]));
-      // 口の動き：音声の大きさに合わせて、なめらかに開閉する
-      c.mouth = c.mouth * 0.6 + (mouthRef ? mouthRef.current : 0) * 0.4;
-      em.setValue("aa", Math.min(1, c.mouth));
-      em.update();
-    }
-    vrm.update(delta);
-    vrm.scene.position.y = baseY.current + Math.sin(clock.current * 2) * 0.004; // 呼吸
-
-    // ---- 腕（更新のあとに設定）----
-    const raw = (name: string) => h?.getRawBoneNode?.(name);
-    const lU = raw("leftUpperArm"), rU = raw("rightUpperArm"), lL = raw("leftLowerArm"), rL = raw("rightLowerArm");
-    if (lU && rU && lL && rL) {
-      lU.rotation.x = c.arm.lUx; lU.rotation.y = c.arm.lUy; lU.rotation.z = c.arm.lUz;
-      rU.rotation.x = c.arm.rUx; rU.rotation.y = c.arm.rUy; rU.rotation.z = c.arm.rUz;
-      lL.rotation.x = 0; lL.rotation.y = c.arm.lLy; lL.rotation.z = 0;
-      rL.rotation.x = 0; rL.rotation.y = c.arm.rLy; rL.rotation.z = 0;
-    }
-
-    // ---- 演出（倒れる／煙で消える）----
-    const g = group.current;
-    if (g) {
-      g.rotation.y = yaw;
-      if (effect === "fall") {
-        const p = Math.min(1, et / 1.2);
-        const e = p * p;
-        g.rotation.z = (side === "left" ? 1 : -1) * 1.45 * e; // 相手と反対側へ、倒れる
-        g.position.y = -0.08 * e;
-        g.scale.setScalar(1);
-      } else if (effect === "smoke") {
-        const s = et < 0.35 ? 1 : Math.max(0, 1 - (et - 0.35) / 0.75);
-        g.rotation.z = 0;
-        g.position.y = 0;
-        g.scale.setScalar(Math.max(0.0001, s));
-      } else {
-        g.rotation.z = 0;
-        g.position.y = 0;
-        g.scale.setScalar(1);
-      }
-    }
-  });
-
-  return (
-    <group ref={group} position={[x, 0, 0]}>
-      {vrm && <primitive object={vrm.scene} />}
-    </group>
-  );
-}
-
-// 煙（白いふわふわの丸）
-function Smoke({ x, active }: { x: number; active: boolean }) {
-  const group = useRef<THREE.Group>(null);
-  const clock = useRef(0);
-  const start = useRef(0);
-  const tex = useMemo(() => {
-    const cv = document.createElement("canvas");
-    cv.width = cv.height = 128;
-    const ctx = cv.getContext("2d")!;
-    const g = ctx.createRadialGradient(64, 64, 4, 64, 64, 64);
-    g.addColorStop(0, "rgba(255,255,255,1)");
-    g.addColorStop(0.6, "rgba(245,245,255,0.6)");
-    g.addColorStop(1, "rgba(245,245,255,0)");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, 128, 128);
-    return new THREE.CanvasTexture(cv);
-  }, []);
-  const puffs = useMemo(
-    () => Array.from({ length: 14 }, () => ({ dx: (Math.random() - 0.5) * 0.5, y: 0.5 + Math.random() * 0.9, delay: Math.random() * 0.35, s: 0.45 + Math.random() * 0.4 })),
-    []
-  );
-  useEffect(() => { start.current = clock.current; }, [active]);
-
-  useFrame((_, delta) => {
-    clock.current += delta;
-    const et = clock.current - start.current;
-    group.current?.children.forEach((child, i) => {
-      const p = puffs[i];
-      const sp = child as THREE.Sprite;
-      const t = active ? et - p.delay : -1;
-      if (t < 0) { sp.visible = false; return; }
-      const grow = Math.min(1, t / 1.2);
-      sp.visible = true;
-      sp.scale.setScalar(p.s * (0.3 + 1.6 * grow));
-      (sp.material as THREE.SpriteMaterial).opacity = grow < 0.3 ? (grow / 0.3) * 0.9 : 0.9 * (1 - (grow - 0.3) / 0.7);
-      sp.position.set(x + p.dx, p.y + grow * 0.2, 0.25);
-    });
-  });
-
-  return (
-    <group ref={group}>
-      {puffs.map((_, i) => (
-        <sprite key={i} visible={false}>
-          <spriteMaterial map={tex} transparent depthWrite={false} opacity={0} />
-        </sprite>
-      ))}
-    </group>
-  );
-}
-
-// 画面の縦横比に合わせて、カメラの距離を決める（2人が、横に収まるように）
-function Rig() {
-  const { camera, size } = useThree();
-  useEffect(() => {
-    const cam = camera as THREE.PerspectiveCamera;
-    const aspect = size.width / size.height;
-    const d = Math.max(2.5, 3.2 / aspect);
-    cam.position.set(0, 1.2, d);
-    cam.lookAt(0, 1.1, 0);
-    cam.updateProjectionMatrix();
-  }, [size, camera]);
-  return null;
-}
-
-export type StageProps = {
-  role: "W" | "M"; // W：女性役（左が女性、右が男性）／ M：男性役（左が男性、右が女性）
-  playerExpr: Expr;
-  partnerExpr: Expr;
+type Breakdown = { feeling: number; balance: number; speed: number; event: number; low: number; subtotal: number };
+type StepResp = {
+  bucket: "good" | "normal" | "bad";
+  reaction: { text: string; expr: Expr };
+  reactionAudio: string;
+  outcome: "continue" | "cleared" | "rejected" | "friend";
+  animation: "fall" | "smoke" | null;
+  partnerType: string | null;
+  breakdown: Breakdown | null;
+  partnerPoints: number | null;
   playerGesture: Gesture;
+  playerExpr: Expr;
   partnerGesture: Gesture;
-  playerKey: number;
-  partnerKey: number;
-  effect: Effect; // フラれたときの、プレイヤー役の演出
-  mouthRef?: MutableRefObject<number>; // 相手の口の開き（音声の大きさ）
+  endLine: string | null;
+  endAudio: string | null;
+  final: { total: number; cleared: number } | null;
+  token: string | null;
+  view: View | null;
 };
 
-const PLAYER_X = -0.45;
-const PARTNER_X = 0.45;
+export default function Game() {
+  const [lang, setLang] = useState<UiLang>("ja");
+  const [sound, setSound] = useState(true);
+  const [stage, setStage] = useState<"age" | "role" | "play" | "end">("age");
+  const [role, setRole] = useState<"W" | "M">("W");
+  const [token, setToken] = useState<string | null>(null);
+  const [view, setView] = useState<View | null>(null);
+  const [resp, setResp] = useState<StepResp | null>(null); // 選択のあとの、相手の反応
+  const [pending, setPending] = useState<{ token: string | null; view: View | null } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [anim, setAnim] = useState<"fall" | "smoke" | null>(null);
 
-export default function GameStage(p: StageProps) {
-  const woman = "/woman.vrm";
-  const man = "/man.vrm";
-  const playerUrl = p.role === "W" ? woman : man;
-  const partnerUrl = p.role === "W" ? man : woman;
+  // アバターの動き
+  const [playerExpr, setPlayerExpr] = useState<Expr>("neutral");
+  const [playerGesture, setPlayerGesture] = useState<Gesture>("idle");
+  const [partnerGesture, setPartnerGesture] = useState<Gesture>("idle");
+  const [playerKey, setPlayerKey] = useState(0);
+  const [partnerKey, setPartnerKey] = useState(0);
+
+  const t = UI[lang];
+
+  // 音声（public/game-audio/言語/ID.mp3）。順番に、続けて再生する。ファイルがなくても、エラーにはしない
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const stopAudio = () => {
+    const a = audioRef.current;
+    if (a) { a.onended = null; a.onerror = null; a.pause(); audioRef.current = null; }
+  };
+  const play = (ids: (string | null | undefined)[], l: UiLang) => {
+    stopAudio();
+    if (!sound) return;
+    const list = ids.filter((x): x is string => !!x);
+    let i = 0;
+    const go = () => {
+      if (i >= list.length) return;
+      const a = new Audio(`/game-audio/${l}/${list[i]}.mp3`);
+      audioRef.current = a;
+      a.onended = () => { i++; go(); };
+      a.onerror = () => { /* ファイルがないときは、何もしない */ };
+      a.play().catch(() => { /* 再生が許可されないときは、何もしない */ });
+    };
+    go();
+  };
+  const toggleSound = () => {
+    if (sound) stopAudio();
+    setSound(!sound);
+  };
+
+  const resetMotion = () => {
+    setPlayerExpr("neutral"); setPlayerGesture("idle"); setPartnerGesture("idle");
+    setPlayerKey((k) => k + 1); setPartnerKey((k) => k + 1);
+  };
+
+  const start = async (r: "W" | "M") => {
+    setBusy(true); setError("");
+    try {
+      const res = await fetch("/api/game/start", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: r, lang }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "failed");
+      setRole(r); setToken(data.token); setView(data.view); setResp(null); setPending(null); setAnim(null);
+      resetMotion();
+      setStage("play");
+      play([data.view.partnerAudio], lang);
+    } catch (e) { setError(t.startFail); }
+    setBusy(false);
+  };
+
+  const choose = async (id: number) => {
+    if (!token || busy) return;
+    setBusy(true); setError("");
+    try {
+      const res = await fetch("/api/game/choose", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, choice: id, lang }),
+      });
+      const data: StepResp & { error?: string } = await res.json();
+      if (!res.ok) throw new Error(data.error || "failed");
+      setResp(data);
+      setPending({ token: data.token, view: data.view });
+      setPlayerExpr(data.playerExpr); setPlayerGesture(data.playerGesture); setPlayerKey((k) => k + 1);
+      setPartnerGesture(data.partnerGesture); setPartnerKey((k) => k + 1);
+      if (data.outcome === "rejected") setAnim(data.animation);
+      play([data.reactionAudio, data.endAudio], lang);
+    } catch (e) { setError(t.commFail); }
+    setBusy(false);
+  };
+
+  const next = () => {
+    if (!resp || !pending) return;
+    if (resp.outcome === "rejected" || resp.outcome === "friend") { stopAudio(); setStage("end"); return; }
+    setToken(pending.token); setView(pending.view); setResp(null); setPending(null);
+    resetMotion();
+    if (pending.view) play([pending.view.partnerAudio], lang);
+  };
+
+  const pct = (v: number) => Math.max(0, Math.min(100, v));
+
+  // 言語ボタンと音声ボタン（プレイ中は、言語を変えられない）
+  const langBar = (
+    <div className="langbar">
+      {UI_LANGS.map((l) => (
+        <button key={l} className={`lang ${l === lang ? "on" : ""}`} onClick={() => setLang(l)}>{LANG_NAME[l]}</button>
+      ))}
+      <button className="lang snd" onClick={toggleSound}>{sound ? t.soundOn : t.soundOff}</button>
+    </div>
+  );
+
   return (
-    <div style={{ width: "100%", height: 340, position: "relative" }}>
-      <Canvas camera={{ position: [0, 1.2, 2.6], fov: 30 }} gl={{ alpha: true }} style={{ background: "transparent" }}>
-        <Rig />
-        <ambientLight intensity={0.8} />
-        <directionalLight position={[1, 2, 3]} intensity={1.1} />
-        <Avatar key={"p-" + playerUrl} url={playerUrl} x={PLAYER_X} yaw={0.35} side="left"
-          expr={p.playerExpr} gesture={p.playerGesture} gestureKey={p.playerKey} effect={p.effect} />
-        <Avatar key={"o-" + partnerUrl} url={partnerUrl} x={PARTNER_X} yaw={-0.35} side="right"
-          expr={p.partnerExpr} gesture={p.partnerGesture} gestureKey={p.partnerKey} effect="none" mouthRef={p.mouthRef} />
-        <Smoke x={PLAYER_X} active={p.effect === "smoke"} />
-      </Canvas>
+    <div className="page">
+      <Head><title>{t.title} | ADIKIO Technologies</title></Head>
+
+      {stage === "age" && (
+        <div className="card center">
+          {langBar}
+          <h1>{t.title}</h1>
+          <p>{t.ageIntro}</p>
+          <p className="small">{t.ageNote}</p>
+          <button className="btn" onClick={() => setStage("role")}>{t.ageButton}</button>
+          <p className="small"><a href="/">{t.backTop}</a></p>
+        </div>
+      )}
+
+      {stage === "role" && (
+        <div className="card center">
+          {langBar}
+          <h1>{t.roleTitle}</h1>
+          <button className="btn" disabled={busy} onClick={() => start("W")}>{t.roleW}</button>
+          <button className="btn alt" disabled={busy} onClick={() => start("M")}>{t.roleM}</button>
+          <p className="small">{t.roleNote}</p>
+          {error && <p className="err">{error}</p>}
+        </div>
+      )}
+
+      {stage === "play" && view && (
+        <div className="card">
+          <div className="hud">
+            <span className="chip">{t.nth(view.partnerIndex)}</span>
+            <span className="chip gold">{t.combo} ×{view.multiplier.toFixed(2)}</span>
+            <span className="chip">{view.total.toLocaleString()} {t.points}</span>
+            <button className="chip sndbtn" onClick={toggleSound}>{sound ? "🔊" : "🔇"}</button>
+          </div>
+
+          <div className="bars">
+            <Bar label={t.spark} v={view.stats.spark} mark={view.threshold} color="#f07aa8" />
+            <Bar label={t.trust} v={view.stats.trust} mark={view.threshold} color="#6eaaf0" />
+            <Bar label={t.wary} v={pct((view.stats.wary / view.wariLimit) * 100)} shown={view.stats.wary} color="#f09650" danger={view.stats.wary / view.wariLimit > 0.7} />
+          </div>
+          <p className="small hint">{t.hint}</p>
+
+          <div className="stagebox">
+            <div className="rain" />
+            <GameStage
+              role={role}
+              playerExpr={playerExpr}
+              partnerExpr={resp ? resp.reaction.expr : view.partnerExpr}
+              playerGesture={playerGesture}
+              partnerGesture={partnerGesture}
+              playerKey={playerKey}
+              partnerKey={partnerKey}
+              effect={anim ?? "none"}
+            />
+          </div>
+
+          <div className="bubble">
+            <div className="who">{t.partnerWho(view.turn, view.maxTurns)}</div>
+            <div className="line">{resp ? resp.reaction.text : view.partnerLine}</div>
+            {resp && resp.outcome !== "continue" && resp.endLine && <div className="line end">{resp.endLine}</div>}
+          </div>
+
+          {!resp && (
+            <div className="choices">
+              {view.choices.map((c) => (
+                <button key={c.id} className="choice" disabled={busy} onClick={() => choose(c.id)}>{c.text}</button>
+              ))}
+            </div>
+          )}
+
+          {resp && (
+            <div className="after">
+              <p className={`mood ${resp.bucket}`}>{resp.bucket === "good" ? t.moodGood : resp.bucket === "bad" ? t.moodBad : t.moodNormal}</p>
+              {resp.outcome === "cleared" && resp.breakdown && (
+                <div className="clear">
+                  <h2>{t.clearTitle(resp.partnerType ?? "")}</h2>
+                  <table><tbody>
+                    <tr><td>{t.feeling}</td><td>{resp.breakdown.feeling}</td></tr>
+                    <tr><td>{t.balance}</td><td>{resp.breakdown.balance}</td></tr>
+                    <tr><td>{t.speed}</td><td>{resp.breakdown.speed}</td></tr>
+                    <tr><td>{t.low}</td><td>{resp.breakdown.low}</td></tr>
+                    <tr><td><b>{t.subtotal}</b></td><td><b>{resp.partnerPoints} {t.points}</b></td></tr>
+                  </tbody></table>
+                </div>
+              )}
+              {(resp.outcome === "rejected" || resp.outcome === "friend") && <p className="partner-type">{t.partnerTypeWas(resp.partnerType ?? "")}</p>}
+              <button className="btn" onClick={next}>
+                {resp.outcome === "continue" ? t.next : resp.outcome === "cleared" ? t.nextPartner : t.seeResult}
+              </button>
+            </div>
+          )}
+          {error && <p className="err">{error}</p>}
+        </div>
+      )}
+
+      {stage === "end" && resp?.final && (
+        <div className="card center">
+          {langBar}
+          <h1>{t.endTitle}</h1>
+          <p className="big">{resp.outcome === "rejected" ? t.endRejected : t.endFriend}</p>
+          <p>{t.clearedCount}　<b>{resp.final.cleared}</b></p>
+          <p className="score">{resp.final.total.toLocaleString()} {t.points}</p>
+          <button className="btn" onClick={() => setStage("role")}>{t.again}</button>
+          <p className="small">{t.rankLater}</p>
+        </div>
+      )}
+
+      <style jsx>{`
+        .page { background: #14131f; color: #f2efe6; min-height: 100vh; padding: 20px 12px 60px;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic', 'Noto Sans JP', sans-serif; }
+        .card { max-width: 480px; margin: 0 auto; }
+        .center { text-align: center; padding-top: 20px; }
+        .langbar { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 20px; }
+        .lang { padding: 6px 10px; border: 1px solid rgba(255,255,255,0.25); border-radius: 999px; background: transparent; color: #cfc9df; font-size: 13px; cursor: pointer; }
+        .lang.on { background: #7c4dff; border-color: #7c4dff; color: #fff; font-weight: 700; }
+        .lang.snd { border-style: dashed; }
+        h1 { font-size: 24px; font-weight: 600; margin: 0 0 16px; }
+        h2 { font-size: 18px; margin: 8px 0; }
+        p { line-height: 1.7; color: #cfc9df; }
+        .small { font-size: 12px; color: #a79fc0; }
+        .big { font-size: 20px; color: #f2efe6; }
+        .score { font-size: 40px; font-weight: 700; color: #ffd76a; margin: 8px 0 20px; }
+        a { color: #cfc9df; }
+        .btn { display: block; width: 100%; margin: 12px 0; padding: 14px; border: none; border-radius: 12px; font-size: 16px; font-weight: 700;
+          background: #7c4dff; color: #fff; cursor: pointer; }
+        .btn.alt { background: #3a6fd8; }
+        .btn:disabled { opacity: 0.6; }
+        .hud { display: flex; gap: 8px; justify-content: space-between; margin-bottom: 14px; }
+        .chip { flex: 1; text-align: center; padding: 8px 6px; border-radius: 999px; background: rgba(255,255,255,0.09); font-weight: 700; font-size: 14px; }
+        .chip.gold { background: rgba(201,162,39,0.22); color: #ffe08a; }
+        .chip.sndbtn { flex: 0 0 44px; border: none; color: #f2efe6; cursor: pointer; }
+        .bars { display: grid; gap: 22px; margin-top: 18px; }
+        .hint { margin: 10px 0 0; }
+        .stagebox { position: relative; margin: 14px 0 6px; border-radius: 16px; overflow: hidden;
+          background: linear-gradient(#2a2058, #15102c 70%, #0d0a1c); }
+        .rain { position: absolute; inset: 0; pointer-events: none; opacity: .5;
+          background-image: repeating-linear-gradient(100deg, rgba(190,205,255,.35) 0 1px, transparent 1px 16px);
+          background-size: 100% 200%; animation: rainfall .9s linear infinite; }
+        @keyframes rainfall { from { background-position: 0 0; } to { background-position: -30px 100%; } }
+        .bubble { margin-top: 10px; padding: 14px 16px; border-radius: 16px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); }
+        .who { font-size: 12px; color: #f0abfc; margin-bottom: 4px; }
+        .line { font-size: 18px; line-height: 1.6; color: #fff; }
+        .line.end { margin-top: 8px; color: #ffd0d0; }
+        .choices { display: grid; gap: 10px; margin-top: 14px; }
+        .choice { padding: 14px; border: none; border-radius: 12px; background: #f1eefc; color: #231c40; font-size: 16px; font-weight: 700; text-align: left; cursor: pointer; }
+        .choice:disabled { opacity: .6; }
+        .after { margin-top: 12px; }
+        .mood { font-weight: 700; font-size: 16px; margin: 6px 0; }
+        .mood.good { color: #7ff0a6; } .mood.bad { color: #ff9a9a; } .mood.normal { color: #e8e0ff; }
+        .clear { padding: 10px 14px; border-radius: 12px; background: rgba(201,162,39,0.14); border: 1px solid rgba(201,162,39,0.5); }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        td { padding: 4px 0; color: #e8e0ff; } td:last-child { text-align: right; }
+        .partner-type { font-size: 14px; }
+        .err { color: #ff9a9a; font-size: 14px; }
+      `}</style>
+      <style jsx global>{`body { margin: 0; }`}</style>
+    </div>
+  );
+}
+
+// ときめき・安心・警戒度のバー。mark があれば、目標の線を、表示する
+function Bar(props: { label: string; v: number; mark?: number; color: string; shown?: number; danger?: boolean }) {
+  const shown = props.shown ?? props.v;
+  return (
+    <div style={{ position: "relative" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 700, marginBottom: 4 }}>
+        <span>{props.label}</span>
+        <span>{shown.toFixed(1)}</span>
+      </div>
+      <div style={{ position: "relative", height: 14, borderRadius: 7, background: "rgba(255,255,255,0.14)" }}>
+        <div style={{ width: `${Math.max(2, Math.min(100, props.v))}%`, height: "100%", borderRadius: 7, background: props.danger ? "#ff5a5a" : props.color, transition: "width .5s" }} />
+        {props.mark !== undefined && (
+          <div style={{ position: "absolute", left: `${props.mark}%`, top: -4, width: 2, height: 22, background: "#ffe08a" }} />
+        )}
+      </div>
     </div>
   );
 }
