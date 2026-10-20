@@ -27,10 +27,11 @@ type AvatarProps = {
   gesture: Gesture;
   gestureKey: number; // 同じ身振りを、もう一度、動かすための番号
   effect: Effect;
+  speaking: boolean; // しゃべっている間は true（口を動かす）
 };
 
 function Avatar(props: AvatarProps) {
-  const { url, x, yaw, side, expr, gesture, gestureKey, effect } = props;
+  const { url, x, yaw, side, expr, gesture, gestureKey, effect, speaking } = props;
   const group = useRef<THREE.Group>(null);
   const [vrm, setVrm] = useState<VRM | null>(null);
   const baseY = useRef(0);
@@ -38,6 +39,7 @@ function Avatar(props: AvatarProps) {
   const gStart = useRef(0);
   const eStart = useRef(0);
   const blink = useRef({ timer: Math.random() * 2, next: 3, value: 0 });
+  const mouth = useRef(0); // 口の開き具合（0〜1）
   const cur = useRef({
     headX: 0, headY: 0, headZ: 0, spineX: 0,
     arm: { ...ARM_IDLE } as Arm,
@@ -120,6 +122,13 @@ function Avatar(props: AvatarProps) {
     };
     (Object.keys(targets) as Expr[]).forEach((e) => { c.ex[e] = lerp(c.ex[e], targets[e]); });
 
+    // ---- 口の動き（しゃべっている間だけ、時間で揺らす）----
+    const T = clock.current;
+    const mouthTarget = speaking
+      ? Math.max(0, 0.18 + 0.32 * Math.sin(T * 13) + 0.2 * Math.sin(T * 5.3 + 1.2) + 0.1 * Math.sin(T * 21))
+      : 0;
+    mouth.current += (mouthTarget - mouth.current) * Math.min(1, delta * 18);
+
     // ---- 頭・背骨（更新の前に設定）----
     const h: any = vrm.humanoid;
     const norm = (name: string) => h?.getNormalizedBoneNode?.(name) ?? h?.getRawBoneNode?.(name);
@@ -132,6 +141,7 @@ function Avatar(props: AvatarProps) {
       const em = vrm.expressionManager;
       em.setValue("blink", b.value);
       (Object.keys(c.ex) as Expr[]).forEach((e) => em.setValue(e, c.ex[e]));
+      em.setValue("aa", Math.min(1, mouth.current));
       em.update();
     }
     vrm.update(delta);
@@ -250,6 +260,7 @@ export type StageProps = {
   playerKey: number;
   partnerKey: number;
   effect: Effect; // フラれたときの、プレイヤー役の演出
+  partnerSpeaking?: boolean; // 相手がしゃべっている間は true（口を動かす）
 };
 
 const PLAYER_X = -0.45;
@@ -267,9 +278,9 @@ export default function GameStage(p: StageProps) {
         <ambientLight intensity={0.8} />
         <directionalLight position={[1, 2, 3]} intensity={1.1} />
         <Avatar key={"p-" + playerUrl} url={playerUrl} x={PLAYER_X} yaw={0.35} side="left"
-          expr={p.playerExpr} gesture={p.playerGesture} gestureKey={p.playerKey} effect={p.effect} />
+          expr={p.playerExpr} gesture={p.playerGesture} gestureKey={p.playerKey} effect={p.effect} speaking={false} />
         <Avatar key={"o-" + partnerUrl} url={partnerUrl} x={PARTNER_X} yaw={-0.35} side="right"
-          expr={p.partnerExpr} gesture={p.partnerGesture} gestureKey={p.partnerKey} effect="none" />
+          expr={p.partnerExpr} gesture={p.partnerGesture} gestureKey={p.partnerKey} effect="none" speaking={!!p.partnerSpeaking} />
         <Smoke x={PLAYER_X} active={p.effect === "smoke"} />
       </Canvas>
     </div>

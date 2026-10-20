@@ -62,6 +62,7 @@ export default function Game() {
   const [playerKey, setPlayerKey] = useState(0);
   const [partnerKey, setPartnerKey] = useState(0);
 
+    const [speaking, setSpeaking] = useState(false);
   const t = UI[lang];
 
   // 音声（public/game-audio/言語/ID.mp3）。順番に、続けて再生する。ファイルがなくても、エラーにはしない
@@ -69,6 +70,7 @@ export default function Game() {
   const stopAudio = () => {
     const a = audioRef.current;
     if (a) { a.onended = null; a.onerror = null; a.pause(); audioRef.current = null; }
+    setSpeaking(false);
   };
   const play = (ids: (string | null | undefined)[], l: UiLang) => {
     stopAudio();
@@ -76,11 +78,12 @@ export default function Game() {
     const list = ids.filter((x): x is string => !!x);
     let i = 0;
     const go = () => {
-      if (i >= list.length) return;
+     if (i >= list.length) { setSpeaking(false); return; }
       const a = new Audio(`/game-audio/${l}/${list[i]}.mp3`);
       audioRef.current = a;
       a.onended = () => { i++; go(); };
-      a.onerror = () => { /* ファイルがないときは、何もしない */ };
+      a.onerror = () => { setSpeaking(false); };
+      a.onplaying = () => setSpeaking(true);
       a.play().catch(() => { /* 再生が許可されないときは、何もしない */ });
     };
     go();
@@ -205,6 +208,7 @@ export default function Game() {
               playerKey={playerKey}
               partnerKey={partnerKey}
               effect={anim ?? "none"}
+              partnerSpeaking={speaking}
             />
           </div>
 
