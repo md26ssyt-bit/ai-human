@@ -208,6 +208,7 @@ export default function Company() {
             <a href="/terms">利用規約</a>
             <a href="/privacy">プライバシーポリシー</a>
             <a href="/refund">返金ポリシー</a>
+            <a href="/tokushoho">特定商取引法に基づく表記</a>
           </div>
         </section>
       </main>
