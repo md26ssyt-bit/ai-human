@@ -4,7 +4,7 @@ import { ARCHETYPES, SCENE_1 } from './content';
 import type { Role } from './content';
 import { LANGS, audioIds, endLineOf, reactionTextOf, turnTextOf } from './text';
 import type { Lang } from './text';
- 
+import { rpsWinAudioId, rpsWinLineOf } from './rps';
 export type AudioItem = { lang: Lang; id: string; text: string; character: 'woman' | 'man' };
  
 export function allAudioItems(): AudioItem[] {
@@ -22,7 +22,8 @@ export function allAudioItems(): AudioItem[] {
         }
       }
       items.push({ lang, id: audioIds.end('reject', role), text: endLineOf('reject', lang), character });
-      items.push({ lang, id: audioIds.end('friend', role), text: endLineOf('friend', lang), character });
+            items.push({ lang, id: audioIds.end('friend', role), text: endLineOf('friend', lang), character });
+      items.push({ lang, id: rpsWinAudioId(role), text: rpsWinLineOf(role, lang), character });
     }
   }
   return items;

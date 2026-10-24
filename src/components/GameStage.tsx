@@ -27,11 +27,12 @@ type AvatarProps = {
   gesture: Gesture;
   gestureKey: number; // 同じ身振りを、もう一度、動かすための番号
   effect: Effect;
-  speaking: boolean; // しゃべっている間は true（口を動かす）
+    speaking: boolean; // しゃべっている間は true（口を動かす）
+  shift: number; // 横へのずれ（近づく動き。0 = もとの位置）
 };
 
 function Avatar(props: AvatarProps) {
-  const { url, x, yaw, side, expr, gesture, gestureKey, effect, speaking } = props;
+  const { url, x, yaw, side, expr, gesture, gestureKey, effect, speaking, shift } = props;
   const group = useRef<THREE.Group>(null);
   const [vrm, setVrm] = useState<VRM | null>(null);
   const baseY = useRef(0);
@@ -261,6 +262,7 @@ export type StageProps = {
   partnerKey: number;
   effect: Effect; // フラれたときの、プレイヤー役の演出
   partnerSpeaking?: boolean; // 相手がしゃべっている間は true（口を動かす）
+  partnerNear?: boolean; // true のとき、相手が一歩、近づく
 };
 
 const PLAYER_X = -0.75;
@@ -278,9 +280,9 @@ export default function GameStage(p: StageProps) {
         <ambientLight intensity={0.8} />
         <directionalLight position={[1, 2, 3]} intensity={1.1} />
         <Avatar key={"p-" + playerUrl} url={playerUrl} x={PLAYER_X} yaw={0.35} side="left"
-          expr={p.playerExpr} gesture={p.playerGesture} gestureKey={p.playerKey} effect={p.effect} speaking={false} />
+          expr={p.playerExpr} gesture={p.playerGesture} gestureKey={p.playerKey} effect={p.effect} speaking={false} shift={0} />
         <Avatar key={"o-" + partnerUrl} url={partnerUrl} x={PARTNER_X} yaw={-0.35} side="right"
-          expr={p.partnerExpr} gesture={p.partnerGesture} gestureKey={p.partnerKey} effect="none" speaking={!!p.partnerSpeaking} />
+          expr={p.partnerExpr} gesture={p.partnerGesture} gestureKey={p.partnerKey} effect="none" speaking={!!p.partnerSpeaking} shift={p.partnerNear ? -0.3 : 0} />
         <Smoke x={PLAYER_X} active={p.effect === "smoke"} />
       </Canvas>
     </div>
