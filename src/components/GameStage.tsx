@@ -243,9 +243,9 @@ function Rig() {
   useEffect(() => {
     const cam = camera as THREE.PerspectiveCamera;
     const aspect = size.width / size.height;
-    const d = Math.max(2.5, 3.2 / aspect);
-    cam.position.set(0, 1.2, d);
-    cam.lookAt(0, 1.1, 0);
+    const d = Math.max(3.5,4.4/aspect);
+    cam.position.set(0, 1.0, d);
+    cam.lookAt(0, 0.95,0);
     cam.updateProjectionMatrix();
   }, [size, camera]);
   return null;
@@ -263,8 +263,8 @@ export type StageProps = {
   partnerSpeaking?: boolean; // 相手がしゃべっている間は true（口を動かす）
 };
 
-const PLAYER_X = -0.45;
-const PARTNER_X = 0.45;
+const PLAYER_X = -0.75;
+const PARTNER_X = 0.75;
 
 export default function GameStage(p: StageProps) {
   const woman = "/woman.vrm";
