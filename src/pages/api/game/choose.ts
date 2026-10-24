@@ -21,6 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
  
     if (state.rps) return res.status(400).json({ error: '先に、じゃんけんをしてください' });
+    if (state.duel) return res.status(400).json({ error: '先に、早撃ちをしてください' });
     const result = step(state, Math.floor(choice), Math.random);
     if (!result) return res.status(400).json({ error: '選択肢が不正です' });
  

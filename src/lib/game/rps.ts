@@ -3,6 +3,7 @@
 import type { RunState } from './engine';
 import type { Role } from './content';
 import type { Lang } from './text';
+import { DUEL_ENABLED } from './duel';
 
 export type RpsResult = 'win' | 'lose' | 'draw';
 
@@ -18,6 +19,7 @@ export function playRps(
   const nextState: RunState = {
     ...s,
     rps: false,
+    duel: DUEL_ENABLED,
     lost: (s.lost ?? 0) + (result === 'lose' ? 1 : 0),
   };
   return { result, cpuHand, nextState };

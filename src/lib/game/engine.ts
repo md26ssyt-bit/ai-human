@@ -34,6 +34,8 @@ export type RunState = {
    exp: number;
   rps?: boolean; // true のとき、次はじゃんけん（選択肢は送れない）
   lost?: number; // じゃんけんに負けた回数（連続倍率が、1回につき 0.25 下がる）
+  duel?: boolean; // true のとき、次は早撃ち（選択肢は送れない）
+  duelGo?: number; // 早撃ちの、合図の予定時刻（サーバーの時計）
 };
  
 type Rng = () => number;
@@ -85,6 +87,7 @@ export type TurnView = {
   wariLimit: number;
   multiplier: number;
   rps: boolean; // true のとき、画面は、じゃんけんを出す
+  duel: boolean; // true のとき、画面は、早撃ちを出す
   total: number;
   cleared: number;
 };
@@ -105,6 +108,7 @@ export function viewOf(s: RunState, lang: Lang = 'ja'): TurnView {
     wariLimit: wariLimitFor(s.n),
     multiplier: multiplierFor(s.n, s.lost ?? 0),
     rps: !!s.rps,
+    duel: !!s.duel,
     total: Math.round(s.total),
     cleared: s.cleared,
   };
