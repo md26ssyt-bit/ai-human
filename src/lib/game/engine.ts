@@ -14,7 +14,7 @@ export const EARLY_MARGIN = 10; // しきい値より、これだけ高ければ
 export const thresholdFor = (n: number) => Math.min(60, 40 + 2 * (n - 1)); // 落とすために必要な値
 export const wariLimitFor = (n: number) => Math.max(18, 28 - 1 * (n - 1)); // 警戒度の上限（人数が進むほど、低くなる）
 export const WARY_UP = 1.8; // 警戒度が上がる量の倍率（失敗の代償を、重くして、フラれる演出が、出やすくする）
-export const multiplierFor = (n: number) => 1 + 0.25 * (n - 1);
+export const multiplierFor = (n: number, lost = 0) => Math.max(1, 1 + 0.25 * (n - 1) - 0.25 * lost);
  
 export type Offsets = Record<Tone, [number, number, number]>;
  
@@ -31,7 +31,9 @@ export type RunState = {
   total: number; // ランの合計点
   cleared: number; // 落とした人数
   tones: Tone[]; // 今のターンで、出している口調（並び順がそのまま選択肢の番号）
-  exp: number;
+   exp: number;
+  rps?: boolean; // true のとき、次はじゃんけん（選択肢は送れない）
+  lost?: number; // じゃんけんに負けた回数（連続倍率が、1回につき 0.25 下がる）
 };
  
 type Rng = () => number;
@@ -82,6 +84,7 @@ export type TurnView = {
   threshold: number;
   wariLimit: number;
   multiplier: number;
+  rps: boolean; // true のとき、画面は、じゃんけんを出す
   total: number;
   cleared: number;
 };
@@ -100,7 +103,8 @@ export function viewOf(s: RunState, lang: Lang = 'ja'): TurnView {
     stats: { spark: round1(s.spark), trust: round1(s.trust), wary: round1(s.wary) },
     threshold: thresholdFor(s.n),
     wariLimit: wariLimitFor(s.n),
-    multiplier: multiplierFor(s.n),
+    multiplier: multiplierFor(s.n, s.lost ?? 0),
+    rps: !!s.rps,
     total: Math.round(s.total),
     cleared: s.cleared,
   };
@@ -165,12 +169,13 @@ export function step(s: RunState, choiceIndex: number, rng: Rng): StepResult | n
   if (early || last) {
     if (next.spark >= T && next.trust >= T) {
       const bd = partnerScore(next, turnsUsed);
-      const pts = round1(bd.subtotal * multiplierFor(s.n));
+      const pts = round1(bd.subtotal * multiplierFor(s.n, s.lost ?? 0));
       const p = newPartner(s.n + 1, rng);
       const ns: RunState = {
         ...next, n: s.n + 1, archetype: p.archetype, offsets: p.offsets, turn: 0,
         spark: START.spark, trust: START.trust, wary: START.wary,
         total: round1(s.total + pts), cleared: s.cleared + 1, tones: pickTones(rng),
+        rps: (s.cleared + 1) % 3 === 0,
       };
       return { bucket, tone, reaction: rx, outcome: 'cleared', archetype: s.archetype, breakdown: bd, partnerPoints: pts, nextState: ns };
     }

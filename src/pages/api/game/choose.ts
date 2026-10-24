@@ -20,6 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'ゲームの状態が見つかりません。最初からやり直してください' });
     }
  
+    if (state.rps) return res.status(400).json({ error: '先に、じゃんけんをしてください' });
     const result = step(state, Math.floor(choice), Math.random);
     if (!result) return res.status(400).json({ error: '選択肢が不正です' });
  
