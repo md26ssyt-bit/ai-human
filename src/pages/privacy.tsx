@@ -3,7 +3,7 @@ import type { LegalDoc } from "../components/LegalPage";
 
 const ja: LegalDoc = {
   title: "プライバシーポリシー",
-  updated: "2026年10月11日",
+  updated: "2026年10月28日",
   blocks: [
     {
       p: [
@@ -119,13 +119,36 @@ const ja: LegalDoc = {
       ],
     },
     {
-      h: "14. ポリシーの変更",
+      h: "14. ゲーム（恋愛ランゲーム）について",
+      p: [
+        "本サービスに含まれるゲーム（恋愛ランゲーム。試作版）は、18歳以上の方向けのフィクションです。年齢の確認は、画面のボタンで行い、年齢を証明する書類などは取得しません。",
+        "ゲームのプレイ中に、当社が取得・保管する情報について、次のとおりお知らせします。",
+      ],
+      ul: [
+        "ゲームの利用に、メールアドレスやニックネームの入力は、求めません。ログインもありません。",
+        "ゲームの進行状態（選択の内容、点数など）は、暗号化された形で、お使いのブラウザの画面の中に、一時的に預けられます。当社のデータベースには、保存しません。ページを閉じる、または再読み込みすると、失われます。",
+        "ゲームの点数や、プレイの記録は、ランキングなどには、使用していません。",
+        "早撃ちの反応時間は、勝敗の判定のために、サーバーが一時的に測定しますが、保存しません。",
+        "ゲームの相手のセリフと音声は、あらかじめ当社が作成した内容を再生するもので、プレイ中の入力が、AIや音声合成の事業者に送られることはありません。効果音は、お使いのブラウザの中で作られます。",
+        "ゲームでは、マイクを使用しません。",
+        "言語の選択や、音声のオン・オフの設定は、画面の中だけで扱い、保存しません。",
+        "ゲームのページでは、アクセス解析を使用していません。",
+      ],
+    },
+    {
+      p: [
+        "ただし、ゲームのページを表示するとき、ホスティング事業者（Vercel Inc.）やネットワーク事業者（Cloudflare, Inc.）の側で、IPアドレスや、アクセス日時などの技術的な記録が、通信の提供や、セキュリティの確保のために、残る場合があります。",
+        "今後、ニックネーム、ランキング、アイテムの購入などの機能を追加する場合は、取得する情報、利用目的、保管期間を、事前に、本ポリシーに明記します。",
+      ],
+    },
+    {
+      h: "15. ポリシーの変更",
       p: [
         "当社は、本ポリシーを随時変更することがあります。最新の版は、改訂日とともに本ページに掲載します。",
       ],
     },
     {
-      h: "15. お問い合わせ",
+      h: "16. お問い合わせ",
       p: [
         "ADIKIO Technologies\n7-8-12, Nakayama Higashi-ku, Niigata City, Japan\ncontact@adikio.com",
       ],
@@ -135,7 +158,7 @@ const ja: LegalDoc = {
 
 const en: LegalDoc = {
   title: "Privacy Policy",
-  updated: "October 11, 2026",
+  updated: "October 28, 2026",
   blocks: [
     {
       p: [
@@ -251,13 +274,36 @@ const en: LegalDoc = {
       ],
     },
     {
-      h: "14. Updates",
+      h: "14. The Game (Romance Run Game)",
+      p: [
+        "The game included in the Service (the Romance Run Game, a prototype) is a work of fiction for ages 18 and over. Age confirmation is done with an on-screen button, and we do not collect any documents proving your age.",
+        "While you play the game, we handle information as follows.",
+      ],
+      ul: [
+        "The game does not ask for your email address or a nickname. There is no login.",
+        "The game progress (your choices, score, and so on) is kept temporarily inside your browser page in an encrypted form. It is not stored in our database. It is lost when you close or reload the page.",
+        "Game scores and play records are not used for rankings or similar features.",
+        "In the quick-draw mini-game, the server measures your reaction time temporarily to decide the result, and does not store it.",
+        "The partner’s lines and voices are pre-made by us and are only played back. What you do while playing is not sent to any AI or speech-synthesis provider. Sound effects are generated inside your browser.",
+        "The game does not use your microphone.",
+        "Your language choice and sound on/off setting are handled only on the screen and are not stored.",
+        "We do not use analytics on the game pages.",
+      ],
+    },
+    {
+      p: [
+        "However, when you open the game pages, technical records such as your IP address and access times may remain on the side of our hosting provider (Vercel Inc.) and network provider (Cloudflare, Inc.), for delivering the service and ensuring security.",
+        "If we add features such as nicknames, rankings, or item purchases in the future, we will state in this Policy beforehand what information we collect, why, and for how long.",
+      ],
+    },
+    {
+      h: "15. Updates",
       p: [
         "We may update this Privacy Policy from time to time. The latest version will be posted on this page with the revised date.",
       ],
     },
     {
-      h: "15. Contact",
+      h: "16. Contact",
       p: [
         "ADIKIO Technologies\n7-8-12, Nakayama, Higashi-ku, Niigata City, Japan\ncontact@adikio.com",
       ],
