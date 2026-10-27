@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { UI, UI_LANGS, LANG_NAME } from "@/lib/game/ui";
 import type { UiLang } from "@/lib/game/ui";
 import { UI_RPS, RPS_ICONS } from "@/lib/game/uiRps";
+import DuelPanel from "@/components/DuelPanel";
 
 // 3Dの舞台は、ブラウザだけで動かす（サーバー側の描画では、使わない）
 const GameStage = dynamic(() => import("../components/GameStage"), {
@@ -23,6 +24,7 @@ type View = {
   stats: { spark: number; trust: number; wary: number };
   threshold: number; wariLimit: number; multiplier: number; total: number; cleared: number;
   rps: boolean; // true のとき、じゃんけんの画面を出す
+  duel: boolean; // true のとき、早撃ちの画面を出す
 };
 type Breakdown = { feeling: number; balance: number; speed: number; event: number; low: number; subtotal: number };
 type StepResp = {
@@ -70,6 +72,10 @@ export default function Game() {
   const [myHand, setMyHand] = useState(0);
   const [near, setNear] = useState(false); // 勝ったとき、相手が近づく
 
+  // 早撃ち（画面の中身は、DuelPanel が担当。ここでは、花びらと、相手の表情だけを持つ）
+  const [petal, setPetal] = useState<{ ms: number; key: number } | null>(null);
+  const [duelMood, setDuelMood] = useState<Expr | null>(null);
+
   // アバターの動き
   const [playerExpr, setPlayerExpr] = useState<Expr>("neutral");
   const [playerGesture, setPlayerGesture] = useState<Gesture>("idle");
@@ -114,6 +120,8 @@ export default function Game() {
     setPlayerKey((k) => k + 1); setPartnerKey((k) => k + 1);
   };
 
+  const resetDuel = () => { setPetal(null); setDuelMood(null); };
+
   const start = async (rl: "W" | "M") => {
     setBusy(true); setError("");
     try {
@@ -124,7 +132,7 @@ export default function Game() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "failed");
       setRole(rl); setToken(data.token); setView(data.view); setResp(null); setPending(null); setAnim(null);
-      setRpsRes(null); setNear(false);
+      setRpsRes(null); setNear(false); resetDuel();
       resetMotion();
       setStage("play");
       play([data.view.partnerAudio], lang);
@@ -156,10 +164,10 @@ export default function Game() {
     if (!resp || !pending) return;
     if (resp.outcome === "rejected" || resp.outcome === "friend") { stopAudio(); setStage("end"); return; }
     setToken(pending.token); setView(pending.view); setResp(null); setPending(null);
-    setRpsRes(null); setNear(false);
+    setRpsRes(null); setNear(false); resetDuel();
     resetMotion();
-    // じゃんけんのときは、相手のセリフは、まだ流さない
-    if (pending.view && !pending.view.rps) play([pending.view.partnerAudio], lang);
+    // じゃんけん・早撃ちのときは、相手のセリフは、まだ流さない
+    if (pending.view && !pending.view.rps && !pending.view.duel) play([pending.view.partnerAudio], lang);
     else stopAudio();
   };
 
@@ -190,13 +198,23 @@ export default function Game() {
     setBusy(false);
   };
 
-  // じゃんけんのあと、次の相手へ
+  // じゃんけんのあと、次の画面（早撃ち、または、次の相手）へ
   const nextFromRps = () => {
     if (!pending || !pending.view) return;
     setToken(pending.token); setView(pending.view); setPending(null);
-    setRpsRes(null); setNear(false);
+    setRpsRes(null); setNear(false); resetDuel();
     resetMotion();
-    play([pending.view.partnerAudio], lang);
+    if (pending.view.duel) stopAudio();
+    else play([pending.view.partnerAudio], lang);
+  };
+
+  // 早撃ち（3回）が終わって、次の相手へ
+  const nextFromDuel = (tk: string, v: unknown) => {
+    const nv = v as View;
+    setToken(tk); setView(nv);
+    resetDuel();
+    resetMotion();
+    play([nv.partnerAudio], lang);
   };
 
   const pct = (v: number) => Math.max(0, Math.min(100, v));
@@ -212,6 +230,15 @@ export default function Game() {
   );
 
   const rpsDone = !!rpsRes && rpsRes.result !== "draw";
+
+  // 相手の表情
+  const partnerExprNow: Expr = resp
+    ? resp.reaction.expr
+    : view?.rps && rpsRes?.result === "win"
+    ? "happy"
+    : view?.duel && duelMood
+    ? duelMood
+    : (view?.partnerExpr ?? "neutral");
 
   return (
     <div className="page">
@@ -248,7 +275,7 @@ export default function Game() {
             <button className="chip sndbtn" onClick={toggleSound}>{sound ? "🔊" : "🔇"}</button>
           </div>
 
-          {!view.rps && (
+          {!view.rps && !view.duel && (
             <>
               <div className="bars">
                 <Bar label={t.spark} v={view.stats.spark} mark={view.threshold} color="#f07aa8" />
@@ -261,10 +288,13 @@ export default function Game() {
 
           <div className="stagebox">
             <div className="rain" />
+            {petal && (
+              <div key={petal.key} className="petal" style={{ animationDuration: `${petal.ms}ms` }}>🌸</div>
+            )}
             <GameStage
               role={role}
               playerExpr={playerExpr}
-              partnerExpr={resp ? resp.reaction.expr : view.rps && rpsRes?.result === "win" ? "happy" : view.partnerExpr}
+              partnerExpr={partnerExprNow}
               playerGesture={playerGesture}
               partnerGesture={partnerGesture}
               playerKey={playerKey}
@@ -312,6 +342,16 @@ export default function Game() {
               )}
               {error && <p className="err">{error}</p>}
             </div>
+          ) : view.duel ? (
+            <DuelPanel
+              key={view.partnerIndex}
+              token={token ?? ""}
+              lang={lang}
+              sound={sound}
+              onPetal={(ms) => setPetal(ms === null ? null : { ms, key: Date.now() })}
+              onMood={setDuelMood}
+              onNext={nextFromDuel}
+            />
           ) : (
             <>
               <div className="bubble">
@@ -399,6 +439,12 @@ export default function Game() {
           background-image: repeating-linear-gradient(100deg, rgba(190,205,255,.35) 0 1px, transparent 1px 16px);
           background-size: 100% 200%; animation: rainfall .9s linear infinite; }
         @keyframes rainfall { from { background-position: 0 0; } to { background-position: -30px 100%; } }
+        .petal { position: absolute; left: 50%; top: 4%; font-size: 34px; z-index: 2; pointer-events: none;
+          transform: translateX(-50%); animation: petalfall 3s linear forwards; }
+        @keyframes petalfall {
+          from { top: 4%; transform: translateX(-50%) rotate(0deg); }
+          to { top: 76%; transform: translateX(-50%) rotate(540deg); }
+        }
         .bubble { margin-top: 10px; padding: 14px 16px; border-radius: 16px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); }
         .who { font-size: 12px; color: #f0abfc; margin-bottom: 4px; }
         .line { font-size: 18px; line-height: 1.6; color: #fff; min-height: 1.6em; }

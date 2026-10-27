@@ -36,6 +36,8 @@ export type RunState = {
   lost?: number; // じゃんけんに負けた回数（連続倍率が、1回につき 0.25 下がる）
   duel?: boolean; // true のとき、次は早撃ち（選択肢は送れない）
   duelGo?: number; // 早撃ちの、合図の予定時刻（サーバーの時計）
+  duelRound?: number; // 早撃ちで、終えた回数
+  duelWins?: number; // 早撃ちで、勝った回数
 };
  
 type Rng = () => number;

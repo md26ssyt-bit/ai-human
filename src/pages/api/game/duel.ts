@@ -1,11 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { viewOf } from '@/lib/game/engine';
 import type { RunState } from '@/lib/game/engine';
-import { resolveDuel, startDuel } from '@/lib/game/duel';
+import { DUEL_ROUNDS, resolveDuel, startDuel } from '@/lib/game/duel';
 import { isLang } from '@/lib/game/text';
 import { open, seal } from '@/lib/game/token';
 
-// 早撃ち（じゃんけんのあとの幕間）。反応時間の測定と、勝ち負けは、すべて、ここ（サーバー）で行う。
+// 早撃ち（じゃんけんのあとの幕間、3回勝負）。反応時間の測定と、勝ち負けは、すべて、ここ（サーバー）で行う。
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Cache-Control', 'no-store');
   if (req.method !== 'POST') return res.status(405).end();
@@ -21,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     if (!state.duel) return res.status(400).json({ error: 'いまは、早撃ちの時間ではありません' });
 
-    // 開始：待ち時間を決めて、予定時刻を記録する
+    // 開始：待ち時間を決めて、予定時刻を記録する（1回ごとに、呼ぶ）
     if (action === 'start') {
       const r = startDuel(state, Math.random);
       return res.status(200).json({ delayMs: r.delayMs, token: seal(r.nextState) });
@@ -34,7 +34,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       result: r.result,
       reactionMs: r.reactionMs,
       cpuMs: r.cpuMs,
+      round: r.round,
+      wins: r.wins,
+      rounds: DUEL_ROUNDS,
+      finished: r.finished,
       bonus: r.bonus,
+      penalty: r.penalty,
       token: seal(r.nextState),
       view: viewOf(r.nextState, lang),
     });
