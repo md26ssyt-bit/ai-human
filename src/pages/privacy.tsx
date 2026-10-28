@@ -72,7 +72,7 @@ const ja: LegalDoc = {
         "Stripe, Inc.：決済の処理",
         "Vercel Inc.：ウェブサイトの提供（ホスティング）",
         "Supabase Inc.：利用回数や会員状態などのデータの保管",
-        "Cloudflare, Inc.：DNS、通信の配信・保護、お問い合わせメールの転送、および会話・入力内容をもとにしたAIによる応答の生成（Workers AI）
+        "Cloudflare, Inc.：DNS、通信の配信・保護、お問い合わせメールの転送、および会話・入力内容をもとにしたAIによる応答の生成（Workers AI）",
       ],
     },
     {
@@ -227,7 +227,7 @@ const en: LegalDoc = {
         "Stripe, Inc.: processing payments",
         "Vercel Inc.: hosting the website",
         "Supabase Inc.: storing data such as usage counts and membership status",
-        "Cloudflare, Inc.: DNS, delivery and protection of traffic, forwarding of inquiry emails, and generating AI responses from your conversation and inputs (Workers AI)
+                "Cloudflare, Inc.: DNS, delivery and protection of traffic, forwarding of inquiry emails, and generating AI responses from your conversation and inputs (Workers AI)",
       ],
     },
     {
