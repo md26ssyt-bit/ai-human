@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { BUSY_BY_LANG, LIMIT_FREE, LIMIT_PREMIUM, pick } from '@/lib/limitMessages';
  
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -20,6 +21,13 @@ const FREE_LIMITS: Record<string, { group: string; limit: number }> = {
   travel: { group: 'fortune_travel', limit: 8 },
 };
  
+// 費用の上限（Vercelの環境変数で変えられる。設定がなければ、下の数字を使う）
+//   CHAT_DAILY_LIMIT_GLOBAL：全員の合計の、1日の上限回数（いちばん大事な天井）
+//   KIOSK_DAILY_LIMIT_PER_IP：キオスク経路で、1つのIPからの、1日の上限回数
+const GLOBAL_DAILY_LIMIT = Number(process.env.CHAT_DAILY_LIMIT_GLOBAL) || 2000;
+const KIOSK_LIMIT_PER_IP = Number(process.env.KIOSK_DAILY_LIMIT_PER_IP) || 1000;
+const MAX_MESSAGE_CHARS = 1000;
+ 
 function getClientIp(req: NextApiRequest): string {
   // Cloudflare経由の場合は、利用者本来のIPがこのヘッダーに入る
   const cfIp = req.headers['cf-connecting-ip'];
@@ -31,6 +39,98 @@ function getClientIp(req: NextApiRequest): string {
     return forwarded.split(',')[0].trim();
   }
   return req.socket.remoteAddress || 'unknown';
+}
+ 
+// 費用の上限用：1回分を数えて、許可されたかを返す。確認に失敗したときは、費用を守るため、許可しない
+async function underCostCap(identifier: string, group: string, limit: number): Promise<boolean> {
+  try {
+    const { data, error } = await supabaseAdmin.rpc('increment_fortune_usage', {
+      p_identifier: identifier,
+      p_mode_group: group,
+      p_limit: limit,
+    });
+    if (error) {
+      console.error('費用上限チェックエラー:', error);
+      return false;
+    }
+    return data?.[0]?.allowed !== false;
+  } catch (e) {
+    console.error('費用上限チェック例外:', e);
+    return false;
+  }
+}
+ 
+const BUSY_REPLY = '本日はアクセスが集中しています🌙 しばらくしてから、またお話ししましょう[EMOTION:neutral]';
+ 
+// ====== AIの呼び出し ======
+// Gemini（これまでの方法）
+async function callGemini(prompt: string): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { thinkingConfig: { thinkingBudget: 0 } },
+    }),
+  });
+  const data: any = await response.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? '少しお待ちください';
+}
+ 
+// Cloudflare Workers AI。失敗・時間切れ・本文が空のときは null を返す（呼び出し側が、Geminiに戻す）
+async function callWorkersAI(system: string, user: string): Promise<string | null> {
+  const account = process.env.CLOUDFLARE_ACCOUNT_ID;
+  const token = process.env.CLOUDFLARE_AI_TOKEN;
+  if (!account || !token) return null;
+  const model = process.env.AI_WORKERS_MODEL || '@cf/google/gemma-4-26b-a4b-it';
+  const body: Record<string, unknown> = {
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: user },
+    ],
+    max_tokens: 400,
+  };
+  // Gemma 4 は、指定しないと、長く考えて、本文が空になる（試験で確認済み）
+  if (model.includes('gemma-4')) body.chat_template_kwargs = { enable_thinking: false };
+ 
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 4000);
+  try {
+    const r = await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/ai/run/${model}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    });
+    const data: any = await r.json();
+    if (!r.ok || data?.success === false) {
+      console.error('Workers AI エラー:', r.status, JSON.stringify(data?.errors ?? data).slice(0, 300));
+      return null;
+    }
+    const text = data?.result?.response ?? data?.result?.choices?.[0]?.message?.content;
+    if (typeof text !== 'string' || text.trim().length === 0) {
+      console.error('Workers AI: 本文が空でした');
+      return null;
+    }
+    const u = data?.result?.usage;
+    console.log('Workers AI 使用量:', JSON.stringify({ model, in: u?.prompt_tokens, out: u?.completion_tokens }));
+    return text;
+  } catch (e) {
+    console.error('Workers AI 例外（時間切れを含む）:', (e as Error).message);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+ 
+// 感情タグを、ちょうど1つに整える（欠けていたら neutral、2つ以上なら最後の1つ）
+function normalizeEmotion(text: string): string {
+  const tags = text.match(/\[EMOTION:(happy|sad|angry|surprised|neutral)\]/g) || [];
+  const last = tags.length > 0 ? tags[tags.length - 1] : '[EMOTION:neutral]';
+  const body = text.replace(/\[EMOTION:[a-z]+\]/g, '').trim();
+  return `${body}${last}`;
 }
  
 // キャラクターごとの基本人格（全モード共通で適用）
@@ -87,11 +187,20 @@ const LANG_INSTRUCTIONS: Record<string, string> = {
   es: 'Responde siempre en español.',
 };
  
+// 返答の形式の指示（Gemini と Workers AI で共通）
+const FORMAT_RULES =
+  '必ず自然な会話文だけを返してください。\n' +
+  '必ず3文以内で簡潔に答えてください。\n' +
+  '返答の文章の最後に必ず[EMOTION:happy]か[EMOTION:sad]か[EMOTION:angry]か[EMOTION:surprised]か[EMOTION:neutral]のどれか1つだけを、文末に1回だけ付けてください（2つ以上付けないでください）。これは絶対に省略しないでください。\n' +
+  '"reply:" や "回答:" などのラベルは絶対に出力しないでください。';
+ 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
  
    try {
-      const { message, email, mode, character, talkStyle, lang, characterMode, deviceId } = req.body;
+      const { message: rawMessage, email, mode, character, talkStyle, lang, characterMode, deviceId } = req.body;
+      // 入力の長さを制限する（費用を守る）
+      const message = typeof rawMessage === 'string' ? rawMessage.slice(0, MAX_MESSAGE_CHARS) : '';
  
     // 占術・性格診断詳細・占い/観光の詳細版は有料コンテンツなので、
     // 決済確認を行わないこのエンドポイントからの直接生成は許可しない
@@ -102,7 +211,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (PAID_ONLY_MODES.has(mode)) {
       return res.status(403).json({ error: 'この内容は決済が必要です' });
     }
-    const apiKey = process.env.GEMINI_API_KEY;
  
     // ====== 占い・観光・雑談・心の相談モード（新規）======
     // mode が送られてきた場合のみここで処理して返す。
@@ -229,48 +337,56 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!allowed) {
           return res.status(200).json({
             reply: isPremiumMember
-              ? '本日はたくさんお話しいただきました🌙 しばらくしてからまたお話ししましょう[EMOTION:neutral]'
-              : '無料回数の上限に達しました。しばらくしてからまたお話ししましょう🌙 続きが気になる方はプレミアムプランもぜひ[EMOTION:neutral]',
+              ? pick(LIMIT_PREMIUM, lang)
+              : pick(LIMIT_FREE, lang),
             limitReached: true,
             modeGroup: blockedGroup,
           });
         }
       }
       // ====== ここまで ======
- 
-      const modeApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-      const modeResponse = await fetch(modeApiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: `${combinedSystemPrompt}
-必ず自然な会話文だけを返してください。
-必ず3文以内で簡潔に答えてください。
-返答の文章の最後に必ず[EMOTION:happy]か[EMOTION:sad]か[EMOTION:angry]か[EMOTION:surprised]か[EMOTION:neutral]のどれか1つだけを、文末に1回だけ付けてください（2つ以上付けないでください）。これは絶対に省略しないでください。
-"reply:" や "回答:" などのラベルは絶対に出力しないでください。
-ユーザー: ${message}`,
-                },
-              ],
-            },
-          ],
-        }),
-      });
- 
-      const modeData = await modeResponse.json();
-      const modeRawText =
-        modeData.candidates?.[0]?.content?.parts?.[0]?.text ?? '少しお待ちください';
-      const modeReply = modeRawText
-        .replace(/^reply[:：\s]*/i, '')
-        .replace(/^回答[:：\s]*/i, '')
-        .trim();
+
+      // ====== 全員の合計の、1日の上限（費用の天井）======
+      if (!(await underCostCap('chat:global', 'chat_global', GLOBAL_DAILY_LIMIT))) {
+        return res.status(200).json({ reply: pick(BUSY_BY_LANG, lang), limitReached: true, modeGroup: 'global' });
+      }
+
+      // ====== AIの選択：既定は Gemini。AI_PROVIDER=workers のときだけ Workers AI（失敗したら Gemini に戻す）======
+      // 「心の相談」は、AI_COUNSELING_ON_WORKERS=1 を設定するまで、Gemini のまま
+      const wantWorkers =
+        process.env.AI_PROVIDER === 'workers' &&
+        (mode !== 'counseling' || process.env.AI_COUNSELING_ON_WORKERS === '1');
+
+      let modeRawText: string | null = null;
+      let usedProvider = 'gemini';
+      if (wantWorkers) {
+        modeRawText = await callWorkersAI(`${combinedSystemPrompt}\n${FORMAT_RULES}`, message);
+        if (modeRawText !== null) usedProvider = 'workers';
+      }
+      if (modeRawText === null) {
+        modeRawText = await callGemini(`${combinedSystemPrompt}\n${FORMAT_RULES}\nユーザー: ${message}`);
+      }
+      console.log('chat:', JSON.stringify({ mode, lang, provider: usedProvider }));
+
+      const modeReply = normalizeEmotion(
+        modeRawText
+          .replace(/^reply[:：\s]*/i, '')
+          .replace(/^回答[:：\s]*/i, '')
+          .trim()
+      );
  
       return res.status(200).json({ reply: modeReply });
     }
     // ====== ここまで新規追加 ======
+
+    // ====== キオスク経路（mode なし）：これまでの動きのまま。ただし、費用を守るため、上限を足した ======
+    if (!(await underCostCap(`kiosk:${getClientIp(req)}`, 'kiosk_ip', KIOSK_LIMIT_PER_IP))) {
+      return res.status(200).json({ reply: BUSY_REPLY });
+    }
+    if (!(await underCostCap('chat:global', 'chat_global', GLOBAL_DAILY_LIMIT))) {
+      return res.status(200).json({ reply: BUSY_REPLY });
+    }
+
     let systemPrompt = 'あなたは企業受付AIです。丁寧にお客様をご案内してください。ユーザーが挨拶してきても挨拶を返さず、すぐに用件を聞いてください。例：「ご用件をお聞かせください」';
     let notifyEmail = process.env.NOTIFY_EMAIL;
     let companyName = '不明';
@@ -302,18 +418,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
  
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
- 
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
- 
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-               text: `${systemPrompt}
+    const rawText = await callGemini(`${systemPrompt}
 必ず自然な会話文だけを返してください。
 必ず3文以内で簡潔に答えてください。
 返答の文章の最後に必ず[EMOTION:happy]か[EMOTION:sad]か[EMOTION:angry]か[EMOTION:surprised]か[EMOTION:neutral]のどれか1つだけを、文末に1回だけ付けてください（2つ以上付けないでください）。これは絶対に省略しないでください。
@@ -323,18 +428,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 例：「承知しました。田中様にご連絡いたします。[NOTIFY:田中:田中様への来客があります]」
 もしユーザーが担当者を呼びたい場合は、返答の最後に「[CALL:担当者名:電話番号]」という形式も追加してください。
 例：「田中様をお呼びします。[NOTIFY:田中:来客があります][CALL:田中:090-0000-0000]」
-ユーザー: ${message}`,
-              },
-            ],
-          },
-        ],
-      }),
-    });
- 
-    const data = await response.json();
-    const rawText =
-      data.candidates?.[0]?.content?.parts?.[0]?.text ?? '少しお待ちください';
-console.log("rawText:", rawText);  // ← 追加
+ユーザー: ${message}`);
+console.log("rawText:", rawText);
     let reply = rawText
       .replace(/^reply[:：\s]*/i, '')
       .replace(/^回答[:：\s]*/i, '')
