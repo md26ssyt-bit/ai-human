@@ -187,6 +187,22 @@ const LANG_INSTRUCTIONS: Record<string, string> = {
   es: 'Responde siempre en español.',
 };
  
+// 言語の念押し（日本語中心の指示に、引っ張られて、日本語で返すのを防ぐ。指示の最後と、話しかけた文の後ろに付ける）
+const LANG_FINAL: Record<'ja' | 'en' | 'zh' | 'id' | 'es', string> = {
+  ja: '',
+  en: 'IMPORTANT: Write your entire reply in English only. Do not use Japanese. Keep the emotion tag at the end exactly as specified above.',
+  zh: '重要：请只用中文回答，不要使用日语。句末的情绪标签请按上面的要求原样保留。',
+  id: 'PENTING: Jawab hanya dalam Bahasa Indonesia. Jangan gunakan bahasa Jepang. Tetap pakai tag emosi di akhir persis seperti yang ditentukan di atas.',
+  es: 'IMPORTANTE: Responde solo en español. No uses japonés. Mantén la etiqueta de emoción al final tal como se indica arriba.',
+};
+const LANG_TAIL: Record<'ja' | 'en' | 'zh' | 'id' | 'es', string> = {
+  ja: '',
+  en: '\n(Please reply in English.)',
+  zh: '\n（请用中文回答。）',
+  id: '\n(Tolong jawab dalam Bahasa Indonesia.)',
+  es: '\n(Por favor, responde en español.)',
+};
+
 // 返答の形式の指示（Gemini と Workers AI で共通）
 const FORMAT_RULES =
   '必ず自然な会話文だけを返してください。\n' +
@@ -360,11 +376,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       let modeRawText: string | null = null;
       let usedProvider = 'gemini';
       if (wantWorkers) {
-        modeRawText = await callWorkersAI(`${combinedSystemPrompt}\n${FORMAT_RULES}`, message);
+       modeRawText = await callWorkersAI(`${combinedSystemPrompt}\n${FORMAT_RULES}\n${pick(LANG_FINAL, lang)}`, `${message}${pick(LANG_TAIL, lang)}`);
         if (modeRawText !== null) usedProvider = 'workers';
       }
       if (modeRawText === null) {
-        modeRawText = await callGemini(`${combinedSystemPrompt}\n${FORMAT_RULES}\nユーザー: ${message}`);
+        modeRawText = await callGemini(`${combinedSystemPrompt}\n${FORMAT_RULES}\n${pick(LANG_FINAL, lang)}\nユーザー: ${message}${pick(LANG_TAIL, lang)}`);
       }
       console.log('chat:', JSON.stringify({ mode, lang, provider: usedProvider }));
 
