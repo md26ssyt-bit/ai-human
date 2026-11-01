@@ -9,13 +9,15 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 // このファイルは、画面の表示だけを担当する（点数や進行は、サーバーが決める）。
 
 export type Expr = "happy" | "neutral" | "sad" | "angry" | "surprised";
-export type Gesture = "idle" | "nod" | "tilt" | "look_away" | "lean_in" | "arms_crossed" | "wave";
+export type Gesture = "idle" | "nod" | "tilt" | "look_away" | "lean_in" | "arms_crossed" | "wave" | "hug";
 export type Effect = "none" | "fall" | "smoke";
 
 // 腕のポーズ（回転の値。モデルによって、見え方が少し違うので、見ながら調整する）
 type Arm = { lUx: number; lUy: number; lUz: number; lLy: number; rUx: number; rUy: number; rUz: number; rLy: number };
 const ARM_IDLE: Arm = { lUx: 0, lUy: 0, lUz: -1.2, lLy: 0, rUx: 0, rUy: 0, rUz: 1.2, rLy: 0 };
 const ARM_CROSSED: Arm = { lUx: -0.6, lUy: -1.0, lUz: -1.2, lLy: -1.5, rUx: -0.35, rUy: 1.0, rUz: 1.2, rLy: 1.2 };
+// 抱きつくときの、両腕を前に広げたポーズ（見ながら調整する。腕が後ろへ行くなら、Ux の符号を反対にする）
+const ARM_HUG: Arm = { lUx: -0.9, lUy: 0.3, lUz: -0.5, lLy: -0.3, rUx: -0.9, rUy: -0.3, rUz: 0.5, rLy: 0.3 };
 const ARM_KEYS = Object.keys(ARM_IDLE) as (keyof Arm)[];
 
 type AvatarProps = {
@@ -27,12 +29,13 @@ type AvatarProps = {
   gesture: Gesture;
   gestureKey: number; // 同じ身振りを、もう一度、動かすための番号
   effect: Effect;
-    speaking: boolean; // しゃべっている間は true（口を動かす）
+  speaking: boolean; // しゃべっている間は true（口を動かす）
   shift: number; // 横へのずれ（近づく動き。0 = もとの位置）
+  hug: boolean; // true のとき、両腕を前に広げる（抱きつく）
 };
 
 function Avatar(props: AvatarProps) {
-  const { url, x, yaw, side, expr, gesture, gestureKey, effect, speaking, shift } = props;
+  const { url, x, yaw, side, expr, gesture, gestureKey, effect, speaking, shift, hug } = props;
   const group = useRef<THREE.Group>(null);
   const [vrm, setVrm] = useState<VRM | null>(null);
   const baseY = useRef(0);
@@ -41,6 +44,7 @@ function Avatar(props: AvatarProps) {
   const eStart = useRef(0);
   const blink = useRef({ timer: Math.random() * 2, next: 3, value: 0 });
   const mouth = useRef(0); // 口の開き具合（0〜1）
+  const sx = useRef(0); // 横へのずれの、いまの値（近づく動き）
   const cur = useRef({
     headX: 0, headY: 0, headZ: 0, spineX: 0,
     arm: { ...ARM_IDLE } as Arm,
@@ -71,7 +75,7 @@ function Avatar(props: AvatarProps) {
     return () => { disposed = true; };
   }, [url]);
 
-  useEffect(() => { gStart.current = clock.current; }, [gestureKey, gesture]);
+  useEffect(() => { gStart.current = clock.current; }, [gestureKey, gesture, hug]);
   useEffect(() => { eStart.current = clock.current; }, [effect]);
 
   useFrame((_, delta) => {
@@ -83,15 +87,17 @@ function Avatar(props: AvatarProps) {
     const lerp = (a: number, b: number) => a + (b - a) * k;
     const away = side === "left" ? -1 : 1; // 相手と、反対の向き
 
-    // ---- 身振りの目標値 ----
+    // ---- 身振りの目標値（抱きつくときは、ほかの身振りより優先）----
+    const gn: Gesture = hug ? "hug" : gesture;
     let headX = 0, headY = 0, headZ = 0, spineX = 0;
     let arm: Arm = ARM_IDLE;
-    switch (gesture) {
+    switch (gn) {
       case "nod": headX = 0.2 * Math.sin(t * 7) * Math.exp(-t * 1.4); break;
       case "tilt": headZ = 0.22 * -away; break;
       case "look_away": headY = 0.6 * away; headX = 0.1; break;
       case "lean_in": spineX = 0.14; headX = 0.04; break;
       case "arms_crossed": arm = ARM_CROSSED; headX = 0.05; break;
+      case "hug": arm = ARM_HUG; spineX = 0.1; headX = 0.05; headZ = 0.08 * -away; break;
       case "wave":
         if (t < 1.8) {
           arm = { ...ARM_IDLE, rUz: -0.5 + 0.2 * Math.sin(t * 9), rLy: 0.4 };
@@ -158,10 +164,12 @@ function Avatar(props: AvatarProps) {
       rL.rotation.x = 0; rL.rotation.y = c.arm.rLy; rL.rotation.z = 0;
     }
 
-    // ---- 演出（倒れる／煙で消える）----
+    // ---- 演出（倒れる／煙で消える）と、近づく動き ----
     const g = group.current;
     if (g) {
       g.rotation.y = yaw;
+      sx.current += (shift - sx.current) * Math.min(1, delta * 3);
+      g.position.x = x + sx.current;
       if (effect === "fall") {
         const p = Math.min(1, et / 1.2);
         const e = p * p;
@@ -244,9 +252,9 @@ function Rig() {
   useEffect(() => {
     const cam = camera as THREE.PerspectiveCamera;
     const aspect = size.width / size.height;
-    const d = Math.max(3.5,4.4/aspect);
+    const d = Math.max(3.5, 4.4 / aspect);
     cam.position.set(0, 1.0, d);
-    cam.lookAt(0, 0.95,0);
+    cam.lookAt(0, 0.95, 0);
     cam.updateProjectionMatrix();
   }, [size, camera]);
   return null;
@@ -263,16 +271,20 @@ export type StageProps = {
   effect: Effect; // フラれたときの、プレイヤー役の演出
   partnerSpeaking?: boolean; // 相手がしゃべっている間は true（口を動かす）
   partnerNear?: boolean; // true のとき、相手が一歩、近づく
+  partnerHug?: boolean; // true のとき、相手がさらに近づいて、両腕を広げる（抱きつく）
 };
 
 const PLAYER_X = -0.75;
 const PARTNER_X = 0.75;
+const NEAR_SHIFT = -0.3; // 一歩、近づく距離
+const HUG_SHIFT = -0.55; // 抱きつくときの、近づく距離（大きいほど近い。めり込むなら、小さくする）
 
 export default function GameStage(p: StageProps) {
   const woman = "/woman.vrm";
   const man = "/man.vrm";
   const playerUrl = p.role === "W" ? woman : man;
   const partnerUrl = p.role === "W" ? man : woman;
+  const partnerShift = p.partnerHug ? HUG_SHIFT : p.partnerNear ? NEAR_SHIFT : 0;
   return (
     <div style={{ width: "100%", height: 340, position: "relative" }}>
       <Canvas camera={{ position: [0, 1.2, 2.6], fov: 30 }} gl={{ alpha: true }} style={{ background: "transparent" }}>
@@ -280,9 +292,9 @@ export default function GameStage(p: StageProps) {
         <ambientLight intensity={0.8} />
         <directionalLight position={[1, 2, 3]} intensity={1.1} />
         <Avatar key={"p-" + playerUrl} url={playerUrl} x={PLAYER_X} yaw={0.35} side="left"
-          expr={p.playerExpr} gesture={p.playerGesture} gestureKey={p.playerKey} effect={p.effect} speaking={false} shift={0} />
+          expr={p.playerExpr} gesture={p.playerGesture} gestureKey={p.playerKey} effect={p.effect} speaking={false} shift={0} hug={false} />
         <Avatar key={"o-" + partnerUrl} url={partnerUrl} x={PARTNER_X} yaw={-0.35} side="right"
-          expr={p.partnerExpr} gesture={p.partnerGesture} gestureKey={p.partnerKey} effect="none" speaking={!!p.partnerSpeaking} shift={p.partnerNear ? -0.3 : 0} />
+          expr={p.partnerExpr} gesture={p.partnerGesture} gestureKey={p.partnerKey} effect="none" speaking={!!p.partnerSpeaking} shift={partnerShift} hug={!!p.partnerHug} />
         <Smoke x={PLAYER_X} active={p.effect === "smoke"} />
       </Canvas>
     </div>

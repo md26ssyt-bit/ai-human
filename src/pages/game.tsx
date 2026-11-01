@@ -75,6 +75,7 @@ export default function Game() {
   // 早撃ち（画面の中身は、DuelPanel が担当。ここでは、花びらと、相手の表情だけを持つ）
   const [petal, setPetal] = useState<{ ms: number; key: number } | null>(null);
   const [duelMood, setDuelMood] = useState<Expr | null>(null);
+  const [hug, setHug] = useState(false); // 早撃ちで勝ち越したとき、相手が抱きつく
 
   // アバターの動き
   const [playerExpr, setPlayerExpr] = useState<Expr>("neutral");
@@ -120,7 +121,7 @@ export default function Game() {
     setPlayerKey((k) => k + 1); setPartnerKey((k) => k + 1);
   };
 
-  const resetDuel = () => { setPetal(null); setDuelMood(null); };
+  const resetDuel = () => { setPetal(null); setDuelMood(null); setHug(false); };
 
   const start = async (rl: "W" | "M") => {
     setBusy(true); setError("");
@@ -288,6 +289,11 @@ export default function Game() {
 
           <div className="stagebox">
             <div className="rain" />
+            {hug && (
+              <div className="hearts">
+                <span>💕</span><span>💖</span><span>💕</span>
+              </div>
+            )}
             {petal && (
               <div key={petal.key} className="petal" style={{ animationDuration: `${petal.ms}ms` }}>🌸</div>
             )}
@@ -302,6 +308,7 @@ export default function Game() {
               effect={anim ?? "none"}
               partnerSpeaking={speaking}
               partnerNear={near}
+              partnerHug={hug}
             />
           </div>
 
@@ -350,6 +357,7 @@ export default function Game() {
               sound={sound}
               onPetal={(ms) => setPetal(ms === null ? null : { ms, key: Date.now() })}
               onMood={setDuelMood}
+              onHug={setHug}
               onNext={nextFromDuel}
             />
           ) : (
@@ -439,6 +447,16 @@ export default function Game() {
           background-image: repeating-linear-gradient(100deg, rgba(190,205,255,.35) 0 1px, transparent 1px 16px);
           background-size: 100% 200%; animation: rainfall .9s linear infinite; }
         @keyframes rainfall { from { background-position: 0 0; } to { background-position: -30px 100%; } }
+        .hearts { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+        .hearts span { position: absolute; bottom: 30%; font-size: 28px; opacity: 0; animation: heartup 2.4s ease-out forwards; }
+        .hearts span:nth-child(1) { left: 38%; animation-delay: 0s; }
+        .hearts span:nth-child(2) { left: 45%; animation-delay: .35s; font-size: 34px; }
+        .hearts span:nth-child(3) { left: 52%; animation-delay: .7s; }
+        @keyframes heartup {
+          0% { transform: translateY(0) scale(.6); opacity: 0; }
+          20% { opacity: 1; }
+          100% { transform: translateY(-120px) scale(1.1); opacity: 0; }
+        }
         .petal { position: absolute; left: 50%; top: 4%; font-size: 34px; z-index: 2; pointer-events: none;
           transform: translateX(-50%); animation: petalfall 3s linear forwards; }
         @keyframes petalfall {

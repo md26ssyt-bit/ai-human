@@ -28,9 +28,10 @@ type Props = {
   onPetal: (ms: number | null) => void; // 花びらを落とす（null で、消す）
   onMood: (e: Expr | null) => void; // 相手の表情
   onNext: (token: string, view: unknown) => void; // 3回終わって、次の相手へ
+  onHug?: (on: boolean) => void; // 勝ち越したとき、相手が抱きつく
 };
 
-export default function DuelPanel({ token, lang, sound, onPetal, onMood, onNext }: Props) {
+export default function DuelPanel({ token, lang, sound, onPetal, onMood, onNext, onHug }: Props) {
   const T = UI_DUEL[lang];
   const U = UI[lang];
   const [phase, setPhase] = useState<"ready" | "wait" | "go" | "result">("ready");
@@ -67,6 +68,10 @@ export default function DuelPanel({ token, lang, sound, onPetal, onMood, onNext 
       setRes(data);
       setPhase("result");
       onMood(data.result === "win" ? "surprised" : "happy");
+      if (data.finished && !data.penalty) {
+        onMood("happy");
+        onHug?.(true);
+      }
       if (sound) window.setTimeout(() => { if (data.result === "win") sfxWin(); else if (data.result !== "foul") sfxLose(); }, 220);
     } catch (e) {
       setError(U.commFail);
@@ -91,6 +96,7 @@ export default function DuelPanel({ token, lang, sound, onPetal, onMood, onNext 
       tokenRef.current = data.token;
       sent.current = false;
       onMood(null);
+      onHug?.(false);
       onPetal(data.delayMs);
       if (sound) sfxPetal(data.delayMs);
       setPhase("wait");
