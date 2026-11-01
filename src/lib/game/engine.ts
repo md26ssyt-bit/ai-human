@@ -4,10 +4,12 @@ import { ARCHETYPES, MATRIX, REACTIONS, SCENE_1, TONES } from './content';
 import type { Archetype, Expr, Role, Tone } from './content';
 import { audioIds, turnTextOf } from './text';
 import type { Lang } from './text';
+import { pickScene, sceneLook, sceneTurn } from './scenes';
+import type { SceneLook } from './scenes';
  
 // ===== 調整用の定数（遊んで、数字を整える） =====
 export const START = { spark: 30, trust: 30, wary: 10 };
-export const MAX_TURNS = SCENE_1.W.length; // 8
+export const MAX_TURNS = SCENE_1.W.length; // 8（どの場面も、8ターン）
 export const EARLY_FROM_TURN = 4; // この手番から、早期クリアを判定
 export const EARLY_MARGIN = 10; // しきい値より、これだけ高ければ、早期クリア
  
@@ -31,9 +33,10 @@ export type RunState = {
   total: number; // ランの合計点
   cleared: number; // 落とした人数
   tones: Tone[]; // 今のターンで、出している口調（並び順がそのまま選択肢の番号）
-   exp: number;
+  exp: number;
+  sc?: number; // いまの場面の番号（0 = 雨の日。なければ 0）
   rps?: boolean; // true のとき、次はじゃんけん（選択肢は送れない）
-  lost?: number; // じゃんけんに負けた回数（連続倍率が、1回につき 0.25 下がる）
+  lost?: number; // じゃんけん・早撃ちで負けた回数（連続倍率が、1回につき 0.25 下がる）
   duel?: boolean; // true のとき、次は早撃ち（選択肢は送れない）
   duelGo?: number; // 早撃ちの、合図の予定時刻（サーバーの時計）
   duelRound?: number; // 早撃ちで、終えた回数
@@ -73,6 +76,7 @@ export function newRun(role: Role, rng: Rng): RunState {
     v: 1, role, n: 1, archetype: p.archetype, offsets: p.offsets, turn: 0,
     spark: START.spark, trust: START.trust, wary: START.wary,
     total: 0, cleared: 0, tones: pickTones(rng), exp: Date.now() + 1000 * 60 * 60 * 24,
+    sc: pickScene(rng, -1),
   };
 }
  
@@ -90,20 +94,22 @@ export type TurnView = {
   multiplier: number;
   rps: boolean; // true のとき、画面は、じゃんけんを出す
   duel: boolean; // true のとき、画面は、早撃ちを出す
+  scene: SceneLook; // いまの場面の見た目（背景と、雨の有無）
   total: number;
   cleared: number;
 };
  
 export function viewOf(s: RunState, lang: Lang = 'ja'): TurnView {
-  const t = SCENE_1[s.role][s.turn]; // 表情は、言語に関係なく、同じ
-  const tx = turnTextOf(s.role, s.turn, lang); // 文章は、言語ごと
+  const sc = s.sc ?? 0;
+  const t = sceneTurn(sc, s.role, s.turn); // 表情は、言語に関係なく、同じ
+  const tx = turnTextOf(s.role, s.turn, lang, sc); // 文章は、言語ごと
   return {
     partnerIndex: s.n,
     turn: s.turn + 1,
     maxTurns: MAX_TURNS,
     partnerLine: tx.line,
     partnerExpr: t.expr,
-    partnerAudio: audioIds.line(s.role, s.turn),
+    partnerAudio: audioIds.line(s.role, s.turn, sc),
     choices: s.tones.map((tone, i) => ({ id: i, text: tx.choices[tone] })),
     stats: { spark: round1(s.spark), trust: round1(s.trust), wary: round1(s.wary) },
     threshold: thresholdFor(s.n),
@@ -111,6 +117,7 @@ export function viewOf(s: RunState, lang: Lang = 'ja'): TurnView {
     multiplier: multiplierFor(s.n, s.lost ?? 0),
     rps: !!s.rps,
     duel: !!s.duel,
+    scene: sceneLook(sc),
     total: Math.round(s.total),
     cleared: s.cleared,
   };
@@ -181,6 +188,7 @@ export function step(s: RunState, choiceIndex: number, rng: Rng): StepResult | n
         ...next, n: s.n + 1, archetype: p.archetype, offsets: p.offsets, turn: 0,
         spark: START.spark, trust: START.trust, wary: START.wary,
         total: round1(s.total + pts), cleared: s.cleared + 1, tones: pickTones(rng),
+        sc: pickScene(rng, s.sc ?? 0), // 次の相手は、別の場面
         rps: (s.cleared + 1) % 3 === 0,
       };
       return { bucket, tone, reaction: rx, outcome: 'cleared', archetype: s.archetype, breakdown: bd, partnerPoints: pts, nextState: ns };
@@ -192,4 +200,3 @@ export function step(s: RunState, choiceIndex: number, rng: Rng): StepResult | n
   next.tones = pickTones(rng);
   return { bucket, tone, reaction: rx, outcome: 'continue', nextState: next };
 }
- 

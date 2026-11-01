@@ -25,6 +25,7 @@ type View = {
   threshold: number; wariLimit: number; multiplier: number; total: number; cleared: number;
   rps: boolean; // true のとき、じゃんけんの画面を出す
   duel: boolean; // true のとき、早撃ちの画面を出す
+  scene: { bg: string; rain: boolean }; // いまの場面の見た目
 };
 type Breakdown = { feeling: number; balance: number; speed: number; event: number; low: number; subtotal: number };
 type StepResp = {
@@ -287,8 +288,8 @@ export default function Game() {
             </>
           )}
 
-          <div className="stagebox">
-            <div className="rain" />
+          <div className="stagebox" style={{ background: view.scene?.bg }}>
+            {(view.scene?.rain ?? true) && <div className="rain" />}
             {hug && (
               <div className="hearts">
                 <span>💕</span><span>💖</span><span>💕</span>

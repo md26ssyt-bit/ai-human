@@ -5,6 +5,8 @@ import type { Role } from './content';
 import { LANGS, audioIds, endLineOf, reactionTextOf, turnTextOf } from './text';
 import type { Lang } from './text';
 import { rpsWinAudioId, rpsWinLineOf } from './rps';
+import { SCENE_COUNT } from './scenes';
+ 
 export type AudioItem = { lang: Lang; id: string; text: string; character: 'woman' | 'man' };
  
 export function allAudioItems(): AudioItem[] {
@@ -13,19 +15,21 @@ export function allAudioItems(): AudioItem[] {
     for (const role of ['W', 'M'] as Role[]) {
       // 相手の性別：女性役のとき相手は男性、男性役のとき相手は女性
       const character: 'woman' | 'man' = role === 'W' ? 'man' : 'woman';
-      SCENE_1[role].forEach((_, i) => {
-        items.push({ lang, id: audioIds.line(role, i), text: turnTextOf(role, i, lang).line, character });
-      });
+      // すべての場面の、相手のセリフ
+      for (let sc = 0; sc < SCENE_COUNT; sc++) {
+        SCENE_1[role].forEach((_, i) => {
+          items.push({ lang, id: audioIds.line(role, i, sc), text: turnTextOf(role, i, lang, sc).line, character });
+        });
+      }
       for (const a of ARCHETYPES) {
         for (const b of ['good', 'normal', 'bad'] as const) {
           items.push({ lang, id: audioIds.reaction(role, a, b), text: reactionTextOf(role, a, b, lang), character });
         }
       }
       items.push({ lang, id: audioIds.end('reject', role), text: endLineOf('reject', lang), character });
-            items.push({ lang, id: audioIds.end('friend', role), text: endLineOf('friend', lang), character });
+      items.push({ lang, id: audioIds.end('friend', role), text: endLineOf('friend', lang), character });
       items.push({ lang, id: rpsWinAudioId(role), text: rpsWinLineOf(role, lang), character });
     }
   }
   return items;
 }
- 
