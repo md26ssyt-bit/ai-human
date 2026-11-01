@@ -5,12 +5,13 @@ import { SCENE_1 } from '../content';
 import type { Role, Turn } from '../content';
 import { cafe } from './cafe';
 import { matsuri } from './matsuri';
+import { library } from './library';
 import type { SceneDef } from './types';
 
 export type { SceneDef } from './types';
 
 // 新しい場面を足すときは、ここに1つ足す（順番を変えると、音声の名前と合わなくなるので、後ろに足すこと）
-export const EXTRA_SCENES: SceneDef[] = [cafe, matsuri];
+export const EXTRA_SCENES: SceneDef[] = [cafe, matsuri, library];
 export const SCENE_COUNT = 1 + EXTRA_SCENES.length;
 
 export type SceneLook = { id: string; bg: string; rain: boolean };
