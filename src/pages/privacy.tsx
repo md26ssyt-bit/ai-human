@@ -3,7 +3,7 @@ import type { LegalDoc } from "../components/LegalPage";
 
 const ja: LegalDoc = {
   title: "プライバシーポリシー",
-  updated: "2026年10月28日",
+  updated: "2026年10月29日",
   blocks: [
     {
       p: [
@@ -71,7 +71,7 @@ const ja: LegalDoc = {
         "Google LLC（Gemini API、Text-to-Speech）：会話・入力内容をもとにした応答や鑑定結果の生成、および音声の合成",
         "Stripe, Inc.：決済の処理",
         "Vercel Inc.：ウェブサイトの提供（ホスティング）",
-        "Supabase Inc.：利用回数や会員状態などのデータの保管",
+        "Supabase Inc.：利用回数や会員状態などのデータの保管、およびゲームの進行状態の一時的な保管",
         "Cloudflare, Inc.：DNS、通信の配信・保護、お問い合わせメールの転送、および会話・入力内容をもとにしたAIによる応答の生成（Workers AI）",
       ],
     },
@@ -126,9 +126,9 @@ const ja: LegalDoc = {
       ],
       ul: [
         "ゲームの利用に、メールアドレスやニックネームの入力は、求めません。ログインもありません。",
-        "ゲームの進行状態（選択の内容、点数など）は、暗号化された形で、お使いのブラウザの画面の中に、一時的に預けられます。当社のデータベースには、保存しません。ページを閉じる、または再読み込みすると、失われます。",
+        "ゲームの進行状態（選択の内容、点数、進行の段階など）は、ゲームをプレイしている間だけ、当社のデータベース（Supabase）に一時的に保存します。氏名、メールアドレス、IPアドレスなど、個人を特定する情報とは、結び付けていません。ゲームが終わると削除し、終わらなかった記録も、作成から約24時間を過ぎたものは、順次削除します。",
         "ゲームの点数や、プレイの記録は、ランキングなどには、使用していません。",
-        "早撃ちの反応時間は、勝敗の判定のために、サーバーが一時的に測定しますが、保存しません。",
+        "早撃ちの反応時間そのものは、保存しません。ただし、合図の予定時刻や、勝った回数は、進行状態の一部として、上と同じ期間だけ、一時的に保存します。",
         "ゲームの相手のセリフと音声は、あらかじめ当社が作成した内容を再生するもので、プレイ中の入力が、AIや音声合成の事業者に送られることはありません。効果音は、お使いのブラウザの中で作られます。",
         "ゲームでは、マイクを使用しません。",
         "言語の選択や、音声のオン・オフの設定は、画面の中だけで扱い、保存しません。",
@@ -158,7 +158,7 @@ const ja: LegalDoc = {
 
 const en: LegalDoc = {
   title: "Privacy Policy",
-  updated: "October 28, 2026",
+  updated: "October 29, 2026",
   blocks: [
     {
       p: [
@@ -226,8 +226,8 @@ const en: LegalDoc = {
         "Google LLC (Gemini API, Text-to-Speech): generating responses and readings from your conversation and inputs, and synthesizing speech",
         "Stripe, Inc.: processing payments",
         "Vercel Inc.: hosting the website",
-        "Supabase Inc.: storing data such as usage counts and membership status",
-                "Cloudflare, Inc.: DNS, delivery and protection of traffic, forwarding of inquiry emails, and generating AI responses from your conversation and inputs (Workers AI)",
+        "Supabase Inc.: storing data such as usage counts and membership status, and temporarily storing game progress",
+        "Cloudflare, Inc.: DNS, delivery and protection of traffic, forwarding of inquiry emails, and generating AI responses from your conversation and inputs (Workers AI)",
       ],
     },
     {
@@ -281,9 +281,9 @@ const en: LegalDoc = {
       ],
       ul: [
         "The game does not ask for your email address or a nickname. There is no login.",
-        "The game progress (your choices, score, and so on) is kept temporarily inside your browser page in an encrypted form. It is not stored in our database. It is lost when you close or reload the page.",
+        "The game progress (your choices, score, stage of play, and so on) is temporarily stored in our database (Supabase) only while you are playing. It is not linked to information that identifies you, such as your name, email address, or IP address. We delete it when the game ends, and we also delete unfinished records progressively once about 24 hours have passed since they were created.",
         "Game scores and play records are not used for rankings or similar features.",
-        "In the quick-draw mini-game, the server measures your reaction time temporarily to decide the result, and does not store it.",
+        "In the quick-draw mini-game, we do not store your reaction time itself. However, the scheduled time of the signal and the number of rounds you won are stored temporarily, for the same period as above, as part of the game progress.",
         "The partner’s lines and voices are pre-made by us and are only played back. What you do while playing is not sent to any AI or speech-synthesis provider. Sound effects are generated inside your browser.",
         "The game does not use your microphone.",
         "Your language choice and sound on/off setting are handled only on the screen and are not stored.",

@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { newRun, viewOf } from '@/lib/game/engine';
 import { isLang } from '@/lib/game/text';
-import { seal } from '@/lib/game/token';
+import { createRun } from '@/lib/game/store';
  
 // ゲームを始める。女性役（W）か男性役（M）と、言語を選ぶ。
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -12,7 +12,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (role !== 'W' && role !== 'M') return res.status(400).json({ error: 'role が不正です' });
     const lang = isLang(req.body?.lang) ? req.body.lang : 'ja';
     const state = newRun(role, Math.random);
-    return res.status(200).json({ token: seal(state), view: viewOf(state, lang) });
+    const token = await createRun(state);
+    return res.status(200).json({ token, view: viewOf(state, lang) });
   } catch (e) {
     console.error('game/start エラー:', e);
     return res.status(500).json({ error: 'ゲームを始められませんでした' });

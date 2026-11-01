@@ -3,7 +3,7 @@ import { step, viewOf } from '@/lib/game/engine';
 import type { RunState } from '@/lib/game/engine';
 import { PARTNER_GESTURE, TONE_EXPR, TONE_GESTURE } from '@/lib/game/gestures';
 import { archetypeLabelOf, audioIds, endLineOf, isLang, reactionTextOf } from '@/lib/game/text';
-import { open, seal } from '@/lib/game/token';
+import { endRun, loadRun, saveRun } from '@/lib/game/store';
  
 // 選択肢を1つ選ぶ。結果の計算は、すべて、ここ（サーバー）で行う。
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -15,13 +15,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: '入力が不正です' });
     }
     const lang = isLang(req.body?.lang) ? req.body.lang : 'ja';
-    const state = open<RunState>(token);
-    if (!state || state.v !== 1 || state.exp < Date.now()) {
+    const loaded = await loadRun(token);
+    const state = loaded?.state;
+    if (!loaded || !state || state.v !== 1 || state.exp < Date.now()) {
       return res.status(400).json({ error: 'ゲームの状態が見つかりません。最初からやり直してください' });
     }
- 
+    const ref = loaded.ref;
     if (state.rps) return res.status(400).json({ error: '先に、じゃんけんをしてください' });
     if (state.duel) return res.status(400).json({ error: '先に、早撃ちをしてください' });
+ 
     const result = step(state, Math.floor(choice), Math.random);
     if (!result) return res.status(400).json({ error: '選択肢が不正です' });
  
@@ -47,7 +49,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
  
     if (result.outcome === 'rejected' || result.outcome === 'friend') {
       const kind = result.outcome === 'rejected' ? 'reject' : 'friend';
-      // ランの終了。点数は、ここまでの合計
+      // ランの終了：記録を消す（古い状態の送り直し・同時の送信は、ここで断る）
+      if (!(await endRun(ref))) {
+        return res.status(409).json({ error: '操作が重なったか、古い状態です。最初からやり直してください' });
+      }
+      // 点数は、ここまでの合計
       return res.status(200).json({
         ...base,
         endLine: endLineOf(kind, lang),
@@ -59,10 +65,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
  
     const ns = result.nextState as RunState;
-    return res.status(200).json({ ...base, endLine: null, endAudio: null, final: null, token: seal(ns), view: viewOf(ns, lang) });
+    const nextToken = await saveRun(ref, ns);
+    if (nextToken === null) {
+      return res.status(409).json({ error: '操作が重なったか、古い状態です。もう一度、選んでください' });
+    }
+    return res.status(200).json({ ...base, endLine: null, endAudio: null, final: null, token: nextToken, view: viewOf(ns, lang) });
   } catch (e) {
     console.error('game/choose エラー:', e);
     return res.status(500).json({ error: '処理に失敗しました' });
   }
 }
- 
