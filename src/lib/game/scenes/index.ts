@@ -8,12 +8,13 @@ import { matsuri } from './matsuri';
 import { library } from './library';
 import { park } from './park';
 import { station } from './station';
+import { amusement } from './amusement';
 import type { SceneDef } from './types';
 
 export type { SceneDef } from './types';
 
 // 新しい場面を足すときは、ここに1つ足す（順番を変えると、音声の名前と合わなくなるので、後ろに足すこと）
-export const EXTRA_SCENES: SceneDef[] = [cafe, matsuri, library, park, station];
+export const EXTRA_SCENES: SceneDef[] = [cafe, matsuri, library, park, station, amusement];
 export const SCENE_COUNT = 1 + EXTRA_SCENES.length;
 
 export type SceneLook = { id: string; bg: string; rain: boolean };
