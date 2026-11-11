@@ -477,8 +477,10 @@ const sendMessage = async (text: string, emailOverride?: string) => {
       setCallButton({ name: callMatch[1], phone: callMatch[2] });
       reply = reply.replace(/\[CALL:.+?\]/, '').trim();
     } else {
-      setCallButton(null);
+           setCallButton(null);
     }
+    // 崩れたタグ（例：[EMOTral]）が残っても読み上げないよう、角括弧の部分を全部消す
+    reply = reply.replace(/\[[^\]]*\]?/g, '').trim();
     // 句読点で分割して順番に読み上げ
     const sentences = reply.split(/(?<=[。！？])/);
     for (const sentence of sentences) {
