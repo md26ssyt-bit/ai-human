@@ -183,7 +183,7 @@ rightHand.rotation.z = -0.01;
 if (!vrm) return null;
 if (loading) return <mesh><boxGeometry /><meshStandardMaterial color="gray" /></mesh>;
 return (
-  <group position={[0, -1.6, 0]} scale={3}>
+   <group position={[0, -1.6, 0]} scale={2.3}>
     <primitive object={vrm.scene} />
   </group>
 );
