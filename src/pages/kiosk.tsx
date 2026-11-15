@@ -455,7 +455,7 @@ const sendMessage = async (text: string, emailOverride?: string) => {
     const response = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text, email })
+      body: JSON.stringify({ message: text, email, history: messages.slice(-6) })
     });
     if (!response.ok) addLog(`❌ chat API失敗: ${response.status}`);
     const data = await response.json();

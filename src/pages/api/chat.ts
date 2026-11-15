@@ -214,7 +214,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
  
    try {
-      const { message: rawMessage, email, mode, character, talkStyle, lang, characterMode, deviceId } = req.body;
+     const { message: rawMessage, email, mode, character, talkStyle, lang, characterMode, deviceId, history: rawHistory } = req.body;
       // 入力の長さを制限する（費用を守る）
       const message = typeof rawMessage === 'string' ? rawMessage.slice(0, MAX_MESSAGE_CHARS) : '';
  
@@ -434,6 +434,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
  
+     const historyText = Array.isArray(rawHistory)
+      ? rawHistory
+          .slice(-6)
+          .map((h: any) => `${h && h.role === 'ai' ? '受付' : 'ユーザー'}: ${String((h && h.text) || '').replace(/\[[^\]]*\]?/g, '').slice(0, 200)}`)
+          .join('\n')
+      : '';
     const rawText = await callGemini(`${systemPrompt}
 必ず自然な会話文だけを返してください。
 必ず3文以内で簡潔に答えてください。
@@ -441,11 +447,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 "reply:" や "回答:" などのラベルは絶対に出力しないでください。
 担当者一覧：${staffInfo || 'なし'}
 もしユーザーが「伝えてください」「連絡してください」「呼んでください」などの伝言を依頼した場合は、返答の最後に必ず「[NOTIFY:担当者名:来訪者のお名前:用件]」という形式で伝言を追加してください。
-来訪者のお名前が分からないときは、お名前に「お名前未確認」と入れて、必ずNOTIFYを付けてください。お名前を聞き返さないでください。
+担当者を呼ぶ依頼で、来訪者のお名前（できれば会社名も）が、これまでの会話にまだ出ていないときは、NOTIFYを付けず、「恐れ入りますが、お名前と会社名をお伺いできますか。」とだけ聞いてください。
+お名前が会話に出たら、NOTIFYを付けてください。2回聞いても答えていただけないときは、お名前に「お名前未確認」と入れてNOTIFYを付けてください。
 用件が分からないときは、用件に「未確認」と入れてください。
 例：「承知しました。田中様にご連絡いたします。[NOTIFY:田中:山田様（株式会社ABC）:打ち合わせのご来訪]」
 もしユーザーが担当者を呼びたい場合は、返答の最後に「[CALL:担当者名:電話番号]」という形式も追加してください。
 例：「田中様をお呼びします。[NOTIFY:田中:山田様（株式会社ABC）:打ち合わせのご来訪][CALL:田中:090-0000-0000]」
+${historyText}
 ユーザー: ${message}`);
 console.log("rawText:", rawText);
     let reply = rawText
