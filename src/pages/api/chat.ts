@@ -440,10 +440,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 返答の文章の最後に必ず[EMOTION:happy]か[EMOTION:sad]か[EMOTION:angry]か[EMOTION:surprised]か[EMOTION:neutral]のどれか1つだけを、文末に1回だけ付けてください（2つ以上付けないでください）。これは絶対に省略しないでください。
 "reply:" や "回答:" などのラベルは絶対に出力しないでください。
 担当者一覧：${staffInfo || 'なし'}
-もしユーザーが「伝えてください」「連絡してください」「呼んでください」などの伝言を依頼した場合は、返答の最後に必ず「[NOTIFY:担当者名:伝言内容]」という形式で伝言を追加してください。
-例：「承知しました。田中様にご連絡いたします。[NOTIFY:田中:田中様への来客があります]」
+もしユーザーが「伝えてください」「連絡してください」「呼んでください」などの伝言を依頼した場合は、返答の最後に必ず「[NOTIFY:担当者名:来訪者のお名前:用件]」という形式で伝言を追加してください。
+来訪者のお名前が会話の中でまだ分からないときは、NOTIFYを付けず、「恐れ入りますが、お名前をお伺いできますか。」とだけ聞いてください。お名前を聞いても答えていただけないときは、お名前に「お名前未確認」と入れてください。
+用件が分からないときは、用件に「未確認」と入れてください。
+例：「承知しました。田中様にご連絡いたします。[NOTIFY:田中:山田様（株式会社ABC）:打ち合わせのご来訪]」
 もしユーザーが担当者を呼びたい場合は、返答の最後に「[CALL:担当者名:電話番号]」という形式も追加してください。
-例：「田中様をお呼びします。[NOTIFY:田中:来客があります][CALL:田中:090-0000-0000]」
+例：「田中様をお呼びします。[NOTIFY:田中:山田様（株式会社ABC）:打ち合わせのご来訪][CALL:田中:090-0000-0000]」
 ユーザー: ${message}`);
 console.log("rawText:", rawText);
     let reply = rawText
@@ -451,10 +453,12 @@ console.log("rawText:", rawText);
       .replace(/^回答[:：\s]*/i, '')
       .trim();
  
-    const notifyMatch = reply.match(/\[NOTIFY:(.+?):(.+?)\]/);
+      const notifyMatch = reply.match(/\[NOTIFY:([^:\]]+):([^:\]]*):?([^\]]*)\]/);
     if (notifyMatch) {
       const staffName = notifyMatch[1];
-      const notifyMessage = notifyMatch[2];
+      const visitorName = notifyMatch[2] || 'お名前未確認';
+      const visitReason = notifyMatch[3] || '未確認';
+      const notifyMessage = `${visitorName} / ${visitReason}`;
       reply = reply.replace(/\[NOTIFY:.+?\]/, '').trim();
  
       let targetEmail = notifyEmail;
@@ -470,7 +474,10 @@ console.log("rawText:", rawText);
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      message: notifyMessage,
+           message: notifyMessage,
+      visitorName,
+      visitReason,
+      staffName,
       company: companyName,
       notifyEmail: targetEmail,
     }),

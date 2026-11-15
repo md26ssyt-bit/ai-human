@@ -5,24 +5,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
   try {
-    const { message, company, notifyEmail } = req.body;
+    const { message, company, notifyEmail, visitorName, visitReason, staffName } = req.body;
+
     // Gmailの設定
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
         user: process.env.GMAIL_USER,
-         pass: process.env.GMAIL_APP_PASSWORD,
+        pass: process.env.GMAIL_APP_PASSWORD,
       },
     });
 
+    const visitor = visitorName || 'お名前未確認';
+    const reason = visitReason || message || '未確認';
+    const staff = staffName ? `${staffName} 様宛` : '';
+    const when = new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
+
     // メール送信
     await transporter.sendMail({
-  from: `${company}受付 <${process.env.GMAIL_USER}>`,
-     to: notifyEmail || process.env.NOTIFY_EMAIL,
-      subject: `【AIコンシェルジュ】${company}からの伝言`,
+      from: `${company}受付 <${process.env.GMAIL_USER}>`,
+      to: notifyEmail || process.env.NOTIFY_EMAIL,
+      subject: `【受付】${visitor} 様が来訪（${company}）`,
       text: `
 会社名：${company}
-伝言内容：${message}
+${staff}
+来訪者：${visitor}
+用件：${reason}
+受付時刻：${when}
       `,
     });
 
