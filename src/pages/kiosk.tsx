@@ -711,7 +711,7 @@ return (
           zIndex: 10,
           textAlign: "center"
         }}>
-          <a href={`tel:${callButton.phone}`} style={{
+         <a href={`tel:${(callButton as any)?.phone ?? ''}`} style={{
             display: "block",
             background: "#2ecc71",
             color: "white",
@@ -721,7 +721,7 @@ return (
             textDecoration: "none",
             boxShadow: "0 4px 20px rgba(0,0,0,0.3)"
           }}>
-            📞 {callButton.name}さんに電話する
+            📞 {(callButton as any)?.name ?? ''}
           </a>
         </div>
       )}
