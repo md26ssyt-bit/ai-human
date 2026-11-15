@@ -1,3 +1,4 @@
+import { kioskFlowReply } from "../../lib/kioskFlow";
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { BUSY_BY_LANG, LIMIT_FREE, LIMIT_PREMIUM, pick } from '@/lib/limitMessages';
@@ -440,7 +441,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .map((h: any) => `${h && h.role === 'ai' ? '受付' : 'ユーザー'}: ${String((h && h.text) || '').replace(/\[[^\]]*\]?/g, '').slice(0, 200)}`)
           .join('\n')
       : '';
-    const rawText = await callGemini(`${systemPrompt}
+     const fixedReply = !mode ? kioskFlowReply(message, rawHistory, staffInfo) : null;
+    const rawText = fixedReply ?? await callGemini(`${systemPrompt}
 必ず自然な会話文だけを返してください。
 必ず3文以内で簡潔に答えてください。
 返答の文章の最後に必ず[EMOTION:happy]か[EMOTION:sad]か[EMOTION:angry]か[EMOTION:surprised]か[EMOTION:neutral]のどれか1つだけを、文末に1回だけ付けてください（2つ以上付けないでください）。これは絶対に省略しないでください。
@@ -454,6 +456,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 もしユーザーが担当者を呼びたい場合は、返答の最後に「[CALL:担当者名:電話番号]」という形式も追加してください。
 例：「田中様をお呼びします。[NOTIFY:田中:山田様（株式会社ABC）:打ち合わせのご来訪][CALL:田中:090-0000-0000]」
 このお店・会社では、来訪者から担当者への伝言や連絡の依頼を必ず承ります。「伝言は承っていません」などと断らないでください。
+来訪者を呼ぶときは「〇〇会社の〇〇様ですね。」の形にしてください。「様」は、お名前のあとに1回だけ付け、会社名には付けないでください（例：「ABC商事の山田様ですね。」）。会社名が分からないときは「山田様ですね。」とだけ言ってください。
 ${historyText}
 ユーザー: ${message}`);
 console.log("rawText:", rawText);
