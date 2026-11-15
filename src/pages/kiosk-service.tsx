@@ -224,7 +224,7 @@ export default function Home() {
 
       {/* ナビ */}
       <nav className="nav">
-        <a href="/" className="nav-logo">Digkio Lab.</a>
+        <a href="/" className="nav-logo">ADIKIO Technologies</a>
         <div className="nav-right">
           <a href="#features" className="nav-link">機能</a>
           <a href="#pricing" className="nav-link">料金</a>

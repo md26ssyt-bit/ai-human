@@ -62,7 +62,7 @@ export default function Login() {
       fontSize: "18px",
       color: "#333"
     }}>
-      Digkio Lab.
+     ADIKIO Technologies
     </div>
     <h1 style={{ fontSize: "32px", marginBottom: "10px" }}>AIコンシェルジュ</h1>
     
