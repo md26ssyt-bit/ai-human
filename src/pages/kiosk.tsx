@@ -206,7 +206,8 @@ export default function Home() {
 if (typeof window !== 'undefined' && !(window as any).mouthState) {
   (window as any).mouthState = { current: { speaking: false, volume: 0 } };
 }
-  const sendMessageRef = useRef<((text: string, emailOverride?: string) => void) | null>(null);
+ const sendMessageRef = useRef<((text: string, emailOverride?: string) => void) | null>(null);
+  const messagesRef = useRef<any[]>([]);
   const isPersonDetectedRef = useRef(false);
   const hasGreetedRef = useRef(false);  // ← ここに追加
   const [callButton, setCallButton] = useState<{name: string, phone: string} | null>(null);
@@ -448,6 +449,8 @@ const sendMessage = async (text: string, emailOverride?: string) => {
   addLog(`📤 送信: ${text}`);
   console.log("sendMessage called:", text);
   if (!text) return;
+    const historyToSend = messagesRef.current.slice(-6);
+  messagesRef.current = [...messagesRef.current, { role: "user", text }];
   setMessages(prev => [...prev, { role: "user", text }]);
   try {
     const email = emailOverride || session?.user?.email || localStorage.getItem('userEmail') || '';
@@ -455,13 +458,14 @@ const sendMessage = async (text: string, emailOverride?: string) => {
     const response = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text, email, history: messages.slice(-6) })
+      body: JSON.stringify({ message: text, email, history: historyToSend })
     });
     if (!response.ok) addLog(`❌ chat API失敗: ${response.status}`);
     const data = await response.json();
     let reply = data.reply ?? "少しお待ちください";
     addLog(`📥 返信: ${reply}`);
 
+        messagesRef.current = [...messagesRef.current, { role: "ai", text: reply }];
     setMessages(prev => [...prev, { role: "ai", text: reply }]);
     // 電話ボタンの検知 [CALL:名前:電話番号]
     // 感情の検知
