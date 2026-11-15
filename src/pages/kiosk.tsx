@@ -702,7 +702,7 @@ return (
       </button>
 
       {/* 電話ボタン */}
-      {callButton && (
+         {false && callButton && (
         <div style={{
           position: "absolute",
           bottom: "80px",
