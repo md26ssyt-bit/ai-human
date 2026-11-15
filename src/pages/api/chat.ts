@@ -403,7 +403,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ reply: BUSY_REPLY });
     }
 
-    let systemPrompt = 'あなたは企業受付AIです。丁寧にお客様をご案内してください。ユーザーが挨拶してきても挨拶を返さず、すぐに用件を聞いてください。例：「ご用件をお聞かせください」';
+    let systemPrompt = 'あなたは企業受付AIです。丁寧にお客様をご案内してください。お客様が担当者を呼んでほしいと言ったときは、必ず担当者を呼ぶ手続きをしてください。';
     let notifyEmail = process.env.NOTIFY_EMAIL;
     let companyName = '不明';
     let staffInfo = '';
