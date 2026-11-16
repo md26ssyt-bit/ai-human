@@ -170,7 +170,7 @@ page.drawText(paymentLink.url, { x: 50, y: y - 238, size: 9, font: englishFont, 
   page.drawText('ゆうちょ銀行', { x: 50, y: y - 140, size: 11, font });
   page.drawText('店番号：後日記入', { x: 50, y: y - 158, size: 11, font });
   page.drawText('口座番号：後日記入', { x: 50, y: y - 176, size: 11, font });
-  page.drawText('口座名義：Digkio Lab. 坂内宏之', { x: 50, y: y - 194, size: 11, font });
+  page.drawText('口座名義：ADIKIO Technologies 坂内宏之', { x: 50, y: y - 194, size: 11, font });
 
   const pdfBytes = await pdfDoc.save();
 
