@@ -76,9 +76,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   for (let i = 0; i < texts.length; i++) {
     const textWidth = boldFont.widthOfTextAtSize(texts[i], stampFontSize);
-    const textX = stampX + (stampSize - textWidth) / 2-1;
+    const shiftX = i === 2 ? -4 : 0;   // TEC は左へ
+    const shiftY = i === 2 ? 0 : 4;    // ADI と KIO は上へ
+    const textX = stampX + (stampSize - textWidth) / 2 - 1 + shiftX;
     const offset = i === 1 ? 1 : 0;  // 真ん中だけ下げる
-    const textY = stampY - lineHeight * (i + 1) -10+ offset;
+    const textY = stampY - lineHeight * (i + 1) - 10 + offset + shiftY;
     page.drawText(texts[i], {
       x: textX, y: textY,
       size: stampFontSize, font: boldFont, color: rgb(0.85, 0, 0),
