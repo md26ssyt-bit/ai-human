@@ -76,7 +76,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   for (let i = 0; i < texts.length; i++) {
     const textWidth = boldFont.widthOfTextAtSize(texts[i], stampFontSize);
-    const shiftX = i === 2 ? -4 : 0;   // TEC は左へ
+    const shiftX = i === 2 ? -6 : 0;   // TEC は左へ
     const shiftY = i === 2 ? 0 : 4;    // ADI と KIO は上へ
     const textX = stampX + (stampSize - textWidth) / 2 - 1 + shiftX;
     const offset = i === 1 ? 1 : 0;  // 真ん中だけ下げる
