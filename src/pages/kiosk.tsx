@@ -298,6 +298,7 @@ setInterval(async () => {
     if (!recognitionRef.current) return resolve();
     stopResolveRef.current = resolve;
     try { recognitionRef.current.stop(); } catch (e) { resolve(); }
+    setTimeout(resolve, 1500); // 止まった通知が来なくても、1.5秒で先へ進む
   });
   addLog("✅ マイク完全停止を確認");
 
@@ -395,6 +396,7 @@ const startDetection = () => {
           body: JSON.stringify({ text })
         });
         if (!res.ok) addLog(`❌ TTS失敗: ${res.status}`);
+        if (!res.ok) { isSpeakingRef.current = false; (window as any).mouthState.current.speaking = false; resolve(); return; }
         const blob = await res.blob();
         // 前回のURLが残っていたら解放してからつくる（メモリリーク対策）
         if (lastAudioUrlRef.current) {
@@ -424,7 +426,9 @@ const startDetection = () => {
           requestAnimationFrame(animate);
         };
         audio.onplay = () => animate();
+        audio.onerror = () => { isSpeakingRef.current = false; (window as any).mouthState.current.speaking = false; resolve(); };
         audio.onended = () => {
+          try { source.disconnect(); analyser.disconnect(); } catch (e) {}
           isSpeakingRef.current = false;
           (window as any).mouthState.current.speaking = false;
           (window as any).mouthState.current.volume = 0;
