@@ -215,6 +215,7 @@ if (typeof window !== 'undefined' && !(window as any).mouthState) {
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [debugLog, setDebugLog] = useState<string[]>([]);
   const addLog = (msg: string) => {
+  console.log("[kiosk]", new Date().toLocaleTimeString(), msg);
     setDebugLog(prev => [...prev.slice(-8), `${new Date().toLocaleTimeString()} ${msg}`]);
   };
   const [emotion, setEmotion] = useState('neutral');
