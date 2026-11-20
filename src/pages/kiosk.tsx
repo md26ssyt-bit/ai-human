@@ -579,7 +579,7 @@ useEffect(() => {
         recognitionRef.current.start();
         addLog("🎤 人を検知→マイク再開");
       } catch (e) {
-        // すでに動いている場合はエラーになるだけなので無視でOK
+         addLog(`❌ 人検知の再開失敗: ${e}`);
       }
     }
   } else {
