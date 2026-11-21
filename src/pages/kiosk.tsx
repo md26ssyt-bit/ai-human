@@ -226,9 +226,9 @@ if (typeof window !== 'undefined' && !(window as any).mouthState) {
     setKioskLang(l);
     try {
       if (recognitionRef.current) {
-               recognitionRef.current.lang = l === 'en' ? 'en-US' : 'ja-JP';
+               recognitionRef.current.abort();
+        recognitionRef.current.lang = l === 'en' ? 'en-US' : 'ja-JP';
         addLog(`🌐 言語切替: ${recognitionRef.current.lang}`);
-        recognitionRef.current.stop();
       }
     } catch (e) {}
     speakDirectly(l === 'en' ? 'Hello. How may I help you?' : 'いらっしゃいませ。');
