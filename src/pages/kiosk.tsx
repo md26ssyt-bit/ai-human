@@ -651,6 +651,7 @@ useEffect(() => {
     langResetTimerRef.current = null;
   }
   if (!isPersonDetected && kioskLangRef.current === 'en') {
+        addLog("⏱ 日本語に戻すタイマー開始");
     langResetTimerRef.current = setTimeout(() => {
       if (kioskLangRef.current !== 'en') return;
       kioskLangRef.current = 'ja';
