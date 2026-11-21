@@ -222,6 +222,7 @@ if (typeof window !== 'undefined' && !(window as any).mouthState) {
   const [kioskLang, setKioskLang] = useState<'ja' | 'en'>('ja');
   const kioskLangRef = useRef<'ja' | 'en'>('ja');
   const rebuildRecognitionRef = useRef<(() => void) | null>(null);
+  const langResetTimerRef = useRef<NodeJS.Timeout | null>(null);
   const switchLang = (l: 'ja' | 'en') => {
     kioskLangRef.current = l;
     setKioskLang(l);
@@ -643,6 +644,30 @@ useEffect(() => {
     hasGreetedRef.current = false;  // 離れたらリセット
   }
 }, [isPersonDetected, greeting]);
+
+useEffect(() => {
+  if (langResetTimerRef.current) {
+    clearTimeout(langResetTimerRef.current);
+    langResetTimerRef.current = null;
+  }
+  if (!isPersonDetected && kioskLangRef.current === 'en') {
+    langResetTimerRef.current = setTimeout(() => {
+      if (kioskLangRef.current !== 'en') return;
+      kioskLangRef.current = 'ja';
+      setKioskLang('ja');
+      try {
+        if (recognitionRef.current) {
+          recognitionRef.current.abort();
+          recognitionRef.current.lang = 'ja-JP';
+        }
+      } catch (e) {}
+      addLog("🌐 英語モードを日本語に戻しました");
+    }, 180000);
+  }
+  return () => {
+    if (langResetTimerRef.current) clearTimeout(langResetTimerRef.current);
+  };
+}, [isPersonDetected, kioskLang]);
 
 // 深夜の自動リロード（保険。メインはFully Kiosk Browser側の設定を推奨）
 useEffect(() => {
