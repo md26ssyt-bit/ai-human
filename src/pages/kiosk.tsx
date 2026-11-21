@@ -226,7 +226,8 @@ if (typeof window !== 'undefined' && !(window as any).mouthState) {
     setKioskLang(l);
     try {
       if (recognitionRef.current) {
-        recognitionRef.current.lang = l === 'en' ? 'en-US' : 'ja-JP';
+               recognitionRef.current.lang = l === 'en' ? 'en-US' : 'ja-JP';
+        addLog(`🌐 言語切替: ${recognitionRef.current.lang}`);
         recognitionRef.current.stop();
       }
     } catch (e) {}
@@ -725,8 +726,8 @@ return (
           onClick={() => switchLang('ja')}
           style={{
             padding: "8px 16px",
-            background: kioskLang === 'ja' ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.5)",
-            color: kioskLang === 'ja' ? "black" : "white",
+           background: kioskLang === 'ja' ? "rgba(0,0,0,0.75)" : "rgba(255,255,255,0.85)",
+           color: kioskLang === 'ja' ? "white" : "black",
             border: "none",
             borderRadius: "8px",
             cursor: "pointer"
@@ -738,8 +739,8 @@ return (
           onClick={() => switchLang('en')}
           style={{
             padding: "8px 16px",
-            background: kioskLang === 'en' ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.5)",
-            color: kioskLang === 'en' ? "black" : "white",
+            background: kioskLang === 'en' ? "rgba(0,0,0,0.75)" : "rgba(255,255,255,0.85)",
+            color: kioskLang === 'en' ? "white" : "black",
             border: "none",
             borderRadius: "8px",
             cursor: "pointer"
