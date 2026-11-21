@@ -230,6 +230,7 @@ if (typeof window !== 'undefined' && !(window as any).mouthState) {
                rebuildRecognitionRef.current?.();
       }
     } catch (e) {}
+    speakQueue.current = []; 
     speakDirectly(l === 'en' ? 'Hello. How may I help you?' : 'いらっしゃいませ。');
   };
   const videoRef = useRef<HTMLVideoElement>(null);
