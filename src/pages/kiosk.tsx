@@ -221,14 +221,13 @@ if (typeof window !== 'undefined' && !(window as any).mouthState) {
   const [emotion, setEmotion] = useState('neutral');
   const [kioskLang, setKioskLang] = useState<'ja' | 'en'>('ja');
   const kioskLangRef = useRef<'ja' | 'en'>('ja');
+  const rebuildRecognitionRef = useRef<(() => void) | null>(null);
   const switchLang = (l: 'ja' | 'en') => {
     kioskLangRef.current = l;
     setKioskLang(l);
     try {
       if (recognitionRef.current) {
-               recognitionRef.current.abort();
-        recognitionRef.current.lang = l === 'en' ? 'en-US' : 'ja-JP';
-        addLog(`🌐 言語切替: ${recognitionRef.current.lang}`);
+               rebuildRecognitionRef.current?.();
       }
     } catch (e) {}
     speakDirectly(l === 'en' ? 'Hello. How may I help you?' : 'いらっしゃいませ。');
@@ -537,41 +536,65 @@ const sendMessage = async (text: string, emailOverride?: string) => {
   }
 };
   // 🔥 音声認識を復活
-  useEffect(() => {
+    useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       addLog("❌ SpeechRecognition未対応");
       return;
     }
-    const recognition = new SpeechRecognition();
-    recognitionRef.current = recognition;
-    recognition.lang = kioskLangRef.current === 'en' ? "en-US" : "ja-JP";
-   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    recognition.continuous = !isIOS;
-    recognition.interimResults = false;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
-    recognition.onresult = (event: any) => {
-      const text = event.results[event.results.length - 1][0].transcript;
-      addLog(`✅ 認識結果: ${text}`);
-      sendMessage(text);
+    const build = () => {
+      const recognition = new SpeechRecognition();
+      recognition.lang = kioskLangRef.current === 'en' ? "en-US" : "ja-JP";
+      recognition.continuous = !isIOS;
+      recognition.interimResults = false;
+
+      recognition.onresult = (event: any) => {
+        const text = event.results[event.results.length - 1][0].transcript;
+        addLog(`✅ 認識結果: ${text}`);
+        sendMessage(text);
+      };
+
+      recognition.onend = () => {
+        addLog("🔁 recognition ended");
+        if (recognition !== recognitionRef.current) return;
+        if (stopResolveRef.current) {
+          stopResolveRef.current();
+          stopResolveRef.current = null;
+        } else if (!isProcessingQueue.current && isPersonDetectedRef.current) {
+          try { recognition.start(); } catch (e) { addLog(`再開失敗: ${e}`); }
+        }
+      };
+
+      recognition.onstart = () => {
+        addLog("🎤 recognition started");
+      };
+
+      return recognition;
     };
 
-    recognition.onend = () => {
-  addLog("🔁 recognition ended");
-  if (stopResolveRef.current) {
-    stopResolveRef.current();      // 「止まった」ことを知らせる
-    stopResolveRef.current = null;
-  } else if (!isProcessingQueue.current && isPersonDetectedRef.current) {
-    // 人がいる時だけ自動再開する（いなければ再開せず省負荷にする）
-    try { recognition.start(); } catch (e) { addLog(`再開失敗: ${e}`); }
-  }
-};
-
-    recognition.onstart = () => {
-      addLog("🎤 recognition started");
+    rebuildRecognitionRef.current = () => {
+      const old = recognitionRef.current;
+      if (old) {
+        old.onend = null;
+        old.onresult = null;
+        old.onstart = null;
+        try { old.abort(); } catch (e) {}
+      }
+      const next = build();
+      recognitionRef.current = next;
+      addLog(`🌐 聞き取りを作り直し: ${next.lang}`);
+      setTimeout(() => {
+        if (isPersonDetectedRef.current && !isProcessingQueue.current) {
+          try { next.start(); } catch (e) { addLog(`再開失敗: ${e}`); }
+        }
+      }, 300);
     };
 
-    recognition.start();
+    const first = build();
+    recognitionRef.current = first;
+    first.start();
   }, []);
   useEffect(() => {
   const init = async () => {
