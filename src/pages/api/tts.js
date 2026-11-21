@@ -138,11 +138,11 @@ export default async function handler(req, res) {
         .single();
       if (customer?.voice_name) voiceName = customer.voice_name;
 
-      const detected = detectLang(text);
+       const detected = lang === 'en' ? 'en-US' : detectLang(text);
       voice = getVoice(detected, voiceName);
     } else {
       // それ以外（character・emailどちらも無い場合）
-      const detected = detectLang(text);
+       const detected = lang === 'en' ? 'en-US' : detectLang(text);
       voice = getVoice(detected, "ja-JP-Neural2-B");
     }
 

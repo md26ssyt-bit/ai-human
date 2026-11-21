@@ -219,6 +219,19 @@ if (typeof window !== 'undefined' && !(window as any).mouthState) {
     setDebugLog(prev => [...prev.slice(-8), `${new Date().toLocaleTimeString()} ${msg}`]);
   };
   const [emotion, setEmotion] = useState('neutral');
+  const [kioskLang, setKioskLang] = useState<'ja' | 'en'>('ja');
+  const kioskLangRef = useRef<'ja' | 'en'>('ja');
+  const switchLang = (l: 'ja' | 'en') => {
+    kioskLangRef.current = l;
+    setKioskLang(l);
+    try {
+      if (recognitionRef.current) {
+        recognitionRef.current.lang = l === 'en' ? 'en-US' : 'ja-JP';
+        recognitionRef.current.stop();
+      }
+    } catch (e) {}
+    speakDirectly(l === 'en' ? 'Hello. How may I help you?' : 'いらっしゃいませ。');
+  };
   const videoRef = useRef<HTMLVideoElement>(null);
   const detectorRef = useRef<any>(null);
   const detectionTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -394,7 +407,7 @@ const startDetection = () => {
         const res = await fetch("/api/tts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text })
+          body: JSON.stringify({ text, lang: kioskLangRef.current })
         });
         if (!res.ok) addLog(`❌ TTS失敗: ${res.status}`);
         if (!res.ok) { isSpeakingRef.current = false; (window as any).mouthState.current.speaking = false; resolve(); return; }
@@ -463,7 +476,7 @@ const sendMessage = async (text: string, emailOverride?: string) => {
     const response = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text, email, history: historyToSend })
+      body: JSON.stringify({ message: text, email, history: historyToSend, lang: kioskLangRef.current })
     });
     if (!response.ok) addLog(`❌ chat API失敗: ${response.status}`);
     const data = await response.json();
@@ -531,7 +544,7 @@ const sendMessage = async (text: string, emailOverride?: string) => {
     }
     const recognition = new SpeechRecognition();
     recognitionRef.current = recognition;
-    recognition.lang = "ja-JP";
+    recognition.lang = kioskLangRef.current === 'en' ? "en-US" : "ja-JP";
    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     recognition.continuous = !isIOS;
     recognition.interimResults = false;
@@ -705,6 +718,36 @@ return (
       >
         ログアウト
       </button>
+
+            {/* 言語切り替えボタン */}
+      <div style={{ position: "absolute", top: "16px", left: "16px", zIndex: 10, display: "flex", gap: "8px" }}>
+        <button
+          onClick={() => switchLang('ja')}
+          style={{
+            padding: "8px 16px",
+            background: kioskLang === 'ja' ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.5)",
+            color: kioskLang === 'ja' ? "black" : "white",
+            border: "none",
+            borderRadius: "8px",
+            cursor: "pointer"
+          }}
+        >
+          日本語
+        </button>
+        <button
+          onClick={() => switchLang('en')}
+          style={{
+            padding: "8px 16px",
+            background: kioskLang === 'en' ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.5)",
+            color: kioskLang === 'en' ? "black" : "white",
+            border: "none",
+            borderRadius: "8px",
+            cursor: "pointer"
+          }}
+        >
+          English
+        </button>
+      </div>
 
       {/* 電話ボタン */}
          {callButton && false && (

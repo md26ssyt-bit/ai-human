@@ -441,8 +441,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .map((h: any) => `${h && h.role === 'ai' ? '受付' : 'ユーザー'}: ${String((h && h.text) || '').replace(/\[[^\]]*\]?/g, '').slice(0, 200)}`)
           .join('\n')
       : '';
-     const fixedReply = !mode ? kioskFlowReply(message, rawHistory, staffInfo) : null;
-    const rawText = fixedReply ?? await callGemini(`${systemPrompt}
+     const fixedReply = (!mode && lang !== 'en') ? kioskFlowReply(message, rawHistory, staffInfo) : null;
+    const englishRule = lang === 'en' ? '\nIMPORTANT: The visitor is using English. Reply ONLY in English, politely and briefly (within 3 sentences). Keep the [EMOTION:...] tag at the end. When calling a staff member, keep the same [NOTIFY:staff name:visitor name:purpose] format, and if the visitor name or company is not yet known, ask for it in English first.' : '';
+const rawText = fixedReply ?? await callGemini(`${systemPrompt}${englishRule}
 必ず自然な会話文だけを返してください。
 必ず3文以内で簡潔に答えてください。
 返答の文章の最後に必ず[EMOTION:happy]か[EMOTION:sad]か[EMOTION:angry]か[EMOTION:surprised]か[EMOTION:neutral]のどれか1つだけを、文末に1回だけ付けてください（2つ以上付けないでください）。これは絶対に省略しないでください。
