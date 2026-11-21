@@ -635,7 +635,7 @@ useEffect(() => {
     console.log("挨拶発動:", greeting);
     isSpeakingRef.current = false;
     setTimeout(() => {
-      speakDirectly(greeting);
+          speakDirectly(kioskLangRef.current === 'en' ? 'Welcome. How may I help you?' : greeting);
     }, 1000);
   }
   if (!isPersonDetected) {
