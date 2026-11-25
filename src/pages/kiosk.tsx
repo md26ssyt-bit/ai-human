@@ -733,6 +733,7 @@ return (
           await ctx.resume();
            audioContextRef.current = ctx; 
           setAudioUnlocked(true);
+          hasGreetedRef.current = true;
           speakDirectly(greeting || 'こんにちは');
         }}
       >
