@@ -44,7 +44,9 @@ export default function Login() {
     router.push("/kiosk");
   }
 };
- return (
+  return (
+  <>
+  <style>{`@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');`}</style>
   <div style={{
     display: "flex",
     flexDirection: "column",
@@ -64,7 +66,7 @@ export default function Login() {
     }}>
      ADIKIO Technologies
     </div>
-    <h1 style={{ fontSize: "32px", marginBottom: "10px" }}>AIコンシェルジュ</h1>
+    <h1 style={{ fontSize: "32px", marginBottom: "10px" }}>AI <span style={{ fontFamily: "'Great Vibes', cursive", fontSize: "48px", fontWeight: "normal" }}>Concierge</span></h1>
     
     <input
       type="email"
@@ -86,7 +88,8 @@ export default function Login() {
       style={{ padding: "10px 40px", cursor: "pointer" }}
     >
       ログイン
-    </button>
+        </button>
   </div>
+  </>
   );
 }
